@@ -1,0 +1,229 @@
+---
+title: "Water Utility Rates in California"
+#author: "Team BA"
+output: 
+  html_document: 
+    self_contained: no
+    keep_md: yes
+---
+
+## Welcome, come in please.
+
+We are interested in `Hello World`-ing all over the place with our sick codes.
+
+If we're lucky we are going to do some really spectacular analysis.
+
+Below is a map of water prices throughout California for the utilities that have greater than 3,000 customers. At the bottom is the unerlying data consisting of the annual water production and deliveries reports, and rates.
+
+```{r global, include=FALSE}
+
+# Global
+viridis_color <- "C"
+
+# File paths
+dropbox <- "~/Dropbox/"
+file_paths <- list(
+  code = paste0(dropbox, "WaterData/code/"),
+  data = paste0(dropbox, "WaterData/data/"),
+  data_owrs = paste0(dropbox, "WaterData/data/OWRS/Open-Water-Rate-Specification-master/full_utility_rates/California/")
+); rm(dropbox)
+
+library(leaflet)
+library(sf)
+
+###############
+# Open Packages
+###############
+# General packages needed
+library(stringr)
+library(lubridate)
+library(viridis)
+# US Census Data
+library(tidycensus)
+library(maps)
+library(sf)
+library(leaflet)
+library(ggridges)
+# Utilities
+library(ggfortify)
+library(haven)
+# Analysis
+library(tidyquant)
+library(lfe)
+library(MatchIt)
+# Aesthetics
+library(hrbrthemes)
+library(gcookbook)
+library(DT)
+# Scraping
+library(rvest)
+# Laod last to avoid masking functionality
+library(tidyverse)
+
+# Open data
+owrs_summary <- read_csv(paste0(file_paths$data, "OWRS/summary_table.csv"))
+summary_table <- read_csv(paste0(file_paths$data, "OWRS/summary_table_cleaned.csv"))
+util_sf <- st_read(paste0(file_paths$data, "GIS/Water_Districts"), "Water_Districts")
+ear <- read_rds(paste0(file_paths$data, "EAR/summary_deliveries_production.rds"))
+# Match Data
+wat_ut_xwalk <- util_sf %>%
+  as_tibble() %>% 
+  select(-geometry) %>% 
+  mutate(AGENCYNAME = str_remove_all(AGENCYNAME, "District|Water|Irrigation"),
+         AGENCYNAME = str_trim(AGENCYNAME, "both")) %>% 
+  fuzzyjoin::stringdist_left_join(
+    owrs_summary %>% 
+      mutate(utility_name = str_remove_all(utility_name, "District|Water|Irrigation|City Of"),
+             utility_name = str_trim(utility_name, "both")) %>% 
+      rename(AGENCYNAME = utility_name)
+  ) %>% 
+  filter(!is.na(pwsid))
+
+util_sf <- util_sf %>% 
+  mutate(AGENCYNAME = str_to_title(AGENCYNAME)) %>% 
+  left_join(wat_ut_xwalk) %>% 
+  filter(!is.na(pwsid))
+
+```
+
+## Fixed, Variable, and Average Prices
+
+```{r, out.width="100%", echo = FALSE, warning = FALSE, message = FALSE, width = 400, height = 800}
+
+# Creating labels
+wat_ut_labels <- sprintf("<strong>Utility Name: %s</strong>
+                          <br/>Bill Type: %s
+                          <br/>Bill Frequency: %s
+                          <br/>Bill Unit: %s
+                          <br/>Service Charge: %s
+                          <br/>Consumption Charge: %s
+                          <br/>Average Bill: %s",
+                  util_sf$AGENCYNAME, util_sf$bill_type, util_sf$bill_frequency,
+                  util_sf$bill_unit, util_sf$service_charge, util_sf$commodity_charge,
+                  util_sf$bill) %>%
+  lapply(htmltools::HTML)
+
+# Put the service charge in bins
+## Service Charges
+bins_serv <- seq(min(util_sf$service_charge), max(util_sf$service_charge), length.out = 10)
+pal_serv <- colorBin("plasma", util_sf$service_charge, bins = bins_serv)
+## Commondity
+bins_com <- seq(min(util_sf$commodity_charge), max(util_sf$commodity_charge), length.out = 10)
+pal_com <- colorBin("plasma", util_sf$commodity_charge, bins = bins_com)
+## Total Bill
+bins_bil <- seq(min(util_sf$bill), max(util_sf$bill), length.out = 10)
+pal_bil <- colorBin("plasma", util_sf$bill, bins = bins_bil)
+
+pal <- colorNumeric("plasma", domain = util_sf$bill)
+
+# Plot
+leaflet(util_sf, width = "100%") %>% 
+  addProviderTiles("CartoDB.Positron") %>% 
+  addPolygons(color = ~pal_bil(bill),
+              fillOpacity = 0.5,
+              weight = 1,
+              label = wat_ut_labels,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto"),
+              group = "Average Bill") %>% 
+  addPolygons(color = ~pal_serv(service_charge),
+              fillOpacity = 0.5,
+              weight = 1,
+              label = wat_ut_labels,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto"),
+              group = "Service Charge") %>%
+  addPolygons(color = ~pal_com(commodity_charge),
+              fillOpacity = 0.5,
+              weight = 1,
+              label = wat_ut_labels,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto"),
+              group = "Water Price") %>%
+  # addLegend(colors = ~pal_bil(bill),
+  #           title = "Average Bill") %>%
+  addLayersControl(
+    overlayGroups = c("Average Bill", "Service Charge", "Water Price"),
+    options = layersControlOptions(collapsed = FALSE),
+    position = "bottomright"
+  ) %>%
+  hideGroup(c("Service Charge", "Water Price")) %>%
+  leaflet.extras::addSearchOSM(options = list(position = "topright"))
+
+```
+
+### Distribution of Average Price Variables
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.height=4.5, fig.width=8, fig.align="center"}
+
+# Distribution of Prices
+owrs_summary %>% 
+  select(bill, commodity_charge, service_charge) %>% 
+  gather() %>% 
+  mutate(key = case_when(
+    key == "bill" ~ "Average Bill",
+    key == "commodity_charge" ~ "Water Price",
+    key == "service_charge" ~ "Service Charge",
+    TRUE ~ key
+  ),
+  key = as_factor(key)) %>% 
+  ggplot(aes(value, group = key, color= key)) + geom_line(stat = "density") + 
+  scale_color_viridis_d(option = viridis_color, end = 0.8) +
+  theme_ipsum() +
+  labs(color = "Bill Type", x = "Price (USD)", y = "Density") +
+  theme(legend.position = "bottom")
+
+ggplot(summary_table, aes(x = Tier_threshold, y = Tier_number, fill = Tier_number)) +
+  geom_density_ridges(scale = 10, size = 0.25, rel_min_height = 0.03) +
+  theme_ridges() +
+  scale_x_continuous(limits=c(0, 200), expand = c(0.01, 0)) +
+  #scale_y_discrete(expand = c(0.01, 0)) +
+  scale_fill_brewer(palette = "YlOrRd")
+  #scale_y_reverse(breaks=c(2000, 1980, 1960, 1940, 1920, 1900), expand = c(0.01, 0))
+
+
+ggplot(summary_table, aes(x = Block_price, y = Block_number, fill=Block_number)) +
+  geom_density_ridges(scale = 10, size = 0.25, rel_min_height = 0.03) +
+  theme_ridges() +
+  scale_x_continuous(limits=c(0, 20), expand = c(0.01, 0)) +
+  scale_fill_brewer(palette = "YlOrRd")
+
+
+owrs_summary %>% 
+  ggplot(aes(bill, approximate_median_income)) + 
+  geom_point(size = 0.6) + 
+  theme_ipsum() + 
+  stat_smooth(method = "lm") +
+  labs(x = "Average Bill (USD)", y = "Median Income (USD)") +
+  xlim(c(0, 250))
+
+```
+
+
+## Extensions and Next Steps
+
+* Defining affordability for water services:
+  + A function of household income, number of people in HH, bill, regional average consumption ,and household consumption. Ultimately this is the percent of the income that a household spends on water conditional on regional consumption.
+* Underlying details for each utility's produciton and deliveries data.
+* Use the rate parser to build a measure of the average bill size.
+
+
+### Downlaod Underlying Data
+
+```{r, echo=FALSE}
+
+ear %>% 
+  datatable(., 
+            extensions = 'Buttons', 
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
+
+```
+
+

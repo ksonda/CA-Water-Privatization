@@ -1,0 +1,235 @@
+---
+metadata:
+  effective_date: 03/01/2018
+  utility_name: "City of Santa Monica"
+  bill_frequency: bimonthly
+rate_structure:
+  RESIDENTIAL_SINGLE:
+     #service_charge: 0
+     commodity_charge: Tiered
+    tier_starts:
+      - 0
+      - 15
+      - 41
+      - 149
+    tier_prices:
+      - 3.01
+      - 4.50
+      - 6.76
+      - 10.57
+    bill: commodity_charge
+  RESIDENTIAL_MULTI:
+    commodity_charge: Tiered
+    tier_starts:
+      - 0
+      - 5
+      - 10
+      - 21
+    tier_prices:
+      - 3.01
+      - 4.50
+      - 6.76
+      - 10.57
+    bill: commodity_charge
+  IRRIGATION:
+    commodity_charge: Tiered
+    tier_starts:
+      depends_on: meter_size
+      values:
+        5/8":
+          - 0
+          - 211
+        3/4":
+          - 0
+          - 211
+        1":
+          - 0
+          - 211
+        1 1/2":
+          - 0
+          - 466
+        2":
+          - 0
+          - 871
+        3":
+          - 0
+          - 1701
+        4":
+          - 0
+          - 2551
+        6":
+          - 0
+          - 5281
+        8":
+          - 0
+          - 5281
+        10":
+          - 0
+          - 5281
+    tier_prices:
+      depends_on: water_type
+      values:
+        potable:
+          - 4.27
+          - 10.53
+        recycled:
+          - 3.84
+          - 3.84
+    commodity_charge: Tiered
+    bill: commodity_charge
+  COMMERCIAL:
+    commodity_charge: Tiered
+    tier_starts:
+      depends_on: meter_size
+      values:
+        5/8":
+          - 0
+          - 211
+        3/4":
+          - 0
+          - 211
+        1":
+          - 0
+          - 211
+        1 1/2":
+          - 0
+          - 466
+        2":
+          - 0
+          - 871
+        3":
+          - 0
+          - 1701
+        4":
+          - 0
+          - 2551
+        6":
+          - 0
+          - 5281
+        8":
+          - 0
+          - 5281
+        10":
+          - 0
+          - 5281
+    tier_prices:
+      depends_on: water_type
+      values:
+        potable:
+          - 4.27
+          - 10.53
+        recycled:
+          - 3.84
+          - 3.84
+    commodity_charge: Tiered
+    bill: commodity_charge
+  INDUSTRIAL:
+    commodity_charge: Tiered
+    tier_starts:
+      depends_on: meter_size
+      values:
+        5/8":
+          - 0
+          - 211
+        3/4":
+          - 0
+          - 211
+        1":
+          - 0
+          - 211
+        1 1/2":
+          - 0
+          - 466
+        2":
+          - 0
+          - 871
+        3":
+          - 0
+          - 1701
+        4":
+          - 0
+          - 2551
+        6":
+          - 0
+          - 5281
+        8":
+          - 0
+          - 5281
+        10":
+          - 0
+          - 5281
+    tier_prices:
+      depends_on: water_type
+      values:
+        potable:
+          - 4.27
+          - 10.53
+        recycled:
+          - 3.84
+          - 3.84
+    commodity_charge: Tiered
+    bill: commodity_charge
+  INSTITUTIONAL:
+    commodity_charge: Tiered
+    tier_starts:
+      depends_on: meter_size
+      values:
+        5/8":
+          - 0
+          - 211
+        3/4":
+          - 0
+          - 211
+        1":
+          - 0
+          - 211
+        1 1/2":
+          - 0
+          - 466
+        2":
+          - 0
+          - 871
+        3":
+          - 0
+          - 1701
+        4":
+          - 0
+          - 2551
+        6":
+          - 0
+          - 5281
+        8":
+          - 0
+          - 5281
+        10":
+          - 0
+          - 5281
+    tier_prices:
+      depends_on: water_type
+      values:
+        potable:
+          - 4.27
+          - 10.53
+        recycled:
+          - 3.84
+          - 3.84
+    commodity_charge: Tiered
+    bill: commodity_charge
+  FIRE_SERVICE:
+    service_charge:
+      depends_on:
+        - meter_size
+      values:
+        1 1/2": 43.05
+        2": 69.07
+        3": 118.87
+        4": 189.99
+        6": 367.71
+        8": 580.99
+        10": 829.80
+    commodity_charge: 0
+    fixed_drought_surcharge: 0
+    variable_drought_surcharge: 0
+    fixed_wastewater_charge: 0
+    variable_wastewater_charge: 0
+    bill: service_charge+commodity_charge

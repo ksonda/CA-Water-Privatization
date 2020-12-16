@@ -1,0 +1,460 @@
+--------------------------------------------------------------------------------
+Codebook for Social Explorer report ID: R12610460
+--------------------------------------------------------------------------------
+
+Contents
+    - Table Summary
+    - Data Dictionary
+    - Citation and Use
+
+
+--------------------------------------------------------------------------------
+Table Summary
+--------------------------------------------------------------------------------
+ 
+Survey:           ACS 2018 (5-Year Estimates)
+Dataset:          Social Explorer Tables: ACS 2018 (5-Year Estimates)
+Tables:
+
+      1. Total Population
+         Universe:  Total Population
+         Name:      A00001
+         Variables:
+            A00001_001:   Total Population
+
+
+      2. Race
+         Universe:  Total Population
+         Name:      A03001
+         Variables:
+            A03001_001:   Total Population:
+            A03001_002:      White Alone
+            A03001_003:      Black or African American Alone
+            A03001_004:      American Indian and Alaska Native Alone
+            A03001_005:      Asian Alone
+            A03001_006:      Native Hawaiian and Other Pacific Islander Alone
+            A03001_007:      Some Other Race Alone
+            A03001_008:      Two or More Races
+
+
+      3. Hispanic or Latino by Race (Collapsed Version)
+         Universe:  Total Population
+         Name:      B04001
+         Variables:
+            B04001_001:   Total Population:
+            B04001_002:      Not Hispanic or Latino:
+            B04001_003:         White Alone
+            B04001_004:         Black or African American Alone
+            B04001_005:         American Indian and Alaska Native Alone
+            B04001_006:         Asian Alone
+            B04001_007:         Native Hawaiian and Other Pacific Islander Alone
+            B04001_008:         Some Other Race Alone
+            B04001_009:         Two or More Races
+            B04001_010:      Hispanic or Latino
+
+
+      4. Households by Race of Householder
+         Universe:  Households
+         Name:      A10010
+         Variables:
+            A10010_001:   Households:
+            A10010_002:      With a Householder Who Is White Alone
+            A10010_003:      With a Householder Who Is Black or African  American Alone
+            A10010_004:      With a Householder Who Is American Indian and  Alaska Native Alone
+            A10010_005:      With a Householder Who Is Asian Alone
+            A10010_006:      With a Householder Who Is Native Hawaiian and  Other Pacific Islander Alone
+            A10010_007:      With a Householder Who Is Some Other Race Alone
+            A10010_008:      With a Householder Who Is Two or More Races
+            A10010_009:      With a Householder Who Is Hispanic or Latino
+            A10010_010:      With a Householder Who Is White Alone, Not  Hispanic or Latino
+
+
+      5. Race (Renter-Occupied Housing Units)
+         Universe:  Universe:  Renter-Occupied Housing Units
+         Name:      A03001B
+         Variables:
+            A03001B_001:   Renter-Occupied Housing Units:
+            A03001B_002:      White Alone Householder
+            A03001B_003:      Black or African American Alone Householder
+            A03001B_004:      American Indian and Alaska Native Alone Householder
+            A03001B_005:      Asian Alone Householder
+            A03001B_006:      Native Hawaiian and Other Pacific Islander Alone Householder
+            A03001B_007:      Some Other Race Alone Householder
+            A03001B_008:      Two or More Races Householder
+            A03001B_009:      White Alone, Not Hispanic or Latino Householder
+            A03001B_010:      Hispanic or Latino Householder
+
+
+      6. Household Income (In <DollarYear> Inflation Adjusted Dollars)
+         Universe:  Households
+         Name:      A14001
+         Variables:
+            A14001_001:   Households:
+            A14001_002:      Less than $10,000
+            A14001_003:      $10,000 to $14,999
+            A14001_004:      $15,000 to $19,999
+            A14001_005:      $20,000 to $24,999
+            A14001_006:      $25,000 to $29,999
+            A14001_007:      $30,000 to $34,999
+            A14001_008:      $35,000 to $39,999
+            A14001_009:      $40,000 to $44,999
+            A14001_010:      $45,000 to $49,999
+            A14001_011:      $50,000 to $59,999
+            A14001_012:      $60,000 to $74,999
+            A14001_013:      $75,000 to $99,999
+            A14001_014:      $100,000 to $124,999
+            A14001_015:      $125,000 to $149,999
+            A14001_016:      $150,000 to $199,999
+            A14001_017:      $200,000 or More
+
+
+      7. Household Income in the Past 12 Months (In <DollarYear> Inflation-Adjusted Dollars) (Additional Version)
+         Universe:  Universe:  Occupied housing units
+         Name:      A14002
+         Variables:
+            A14002_001:   Occupied Housing Units:
+            A14002_002:      Less than $5,000
+            A14002_003:      $5,000 to $9,999
+            A14002_004:      $10,000 to $14,999
+            A14002_005:      $15,000 to $19,999
+            A14002_006:      $20,000 to $24,999
+            A14002_007:      $25,000 to $34,999
+            A14002_008:      $35,000 to $49,999
+            A14002_009:      $50,000 to $74,999
+            A14002_010:      $75,000 to $99,999
+            A14002_011:      $100,000 to $149,999
+            A14002_012:      $150,000 or More
+
+
+      8. Gross Rent as a Percentage of Household Income in the Past 12 Months (Dollars)
+         Universe:  Renter-occupied housing units
+         Name:      A18002
+         Variables:
+            A18002_001:   Renter-Occupied Housing Units:
+            A18002_002:      Less than 10 Percent
+            A18002_003:      10 to 29 Percent
+            A18002_004:      30 to 49 Percent
+            A18002_005:      50 Percent or More
+            A18002_006:      Not Computed
+
+
+      9. Residents Paying More Than 30% or at least 50% of Income on Rent
+         Universe:  Renter-Occupied Housing Units
+         Name:      B18002
+         Variables:
+            B18002_001:   Renter-Occupied Housing Units:
+            B18002_002:      30 to 49 Percent
+            B18002_003:      50 percent or More
+
+
+      10. Household Type by Household Size
+          Universe:  Households
+          Name:      A10066
+          Variables:
+             A10066_001:   Households:
+             A10066_002:      1-Person Household
+             A10066_003:      2-Person Household
+             A10066_004:      3-Person Household
+             A10066_005:      4-Person Household
+             A10066_006:      5-Person Household
+             A10066_007:      6-Person Household
+             A10066_008:      7-or-More Person Household
+
+
+
+
+
+Survey:           ACS 2018 (5-Year Estimates)
+Dataset:          American Community Survey Tables:  2014 -- 2018 (5-Year Estimates)
+Tables:
+
+      1. Median Household Income In The Past 12 Months (In <DollarYear> Inflation-Adjusted Dollars) By Household Size
+         Universe:  Universe:  Households
+         Name:      B19019
+         Variables:
+            B19019001:    Total:
+            B19019002:       1-Person Households
+            B19019003:       2-Person Households
+            B19019004:       3-Person Households
+            B19019005:       4-Person Households
+            B19019006:       5-Person Households
+            B19019007:       6-Person Households
+            B19019008:       7-Or-More-Person Households
+
+
+      2. Median Household Income In The Past 12 Months (In <DollarYear> Inflation-Adjusted Dollars) By Household Size
+         Universe:  Universe:  Households
+         Name:      B19019_se
+         Variables:
+            B19019001s:   Std. Error:  Total:
+            B19019002s:      Std. Error:  1-Person Households
+            B19019003s:      Std. Error:  2-Person Households
+            B19019004s:      Std. Error:  3-Person Households
+            B19019005s:      Std. Error:  4-Person Households
+            B19019006s:      Std. Error:  5-Person Households
+            B19019007s:      Std. Error:  6-Person Households
+            B19019008s:      Std. Error:  7-Or-More-Person Households
+
+
+      3. Aggregate Household Income In The Past 12 Months (In <DollarYear> Inflation-Adjusted Dollars)
+         Universe:  Universe:  Households
+         Name:      B19025
+         Variables:
+            B19025001:   Aggregate Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+
+
+      4. Aggregate Household Income In The Past 12 Months (In <DollarYear> Inflation-Adjusted Dollars)
+         Universe:  Universe:  Households
+         Name:      B19025_se
+         Variables:
+            B19025001s:   Std. Error: Aggregate Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+
+
+      5. Units In Structure
+         Universe:  Universe:  Housing units
+         Name:      B25024
+         Variables:
+            B25024001:   Total:
+            B25024002:      1, Detached
+            B25024003:      1, Attached
+            B25024004:      2
+            B25024005:      3 Or 4
+            B25024006:      5 To 9
+            B25024007:      10 To 19
+            B25024008:      20 To 49
+            B25024009:      50 Or More
+            B25024010:      Mobile Home
+            B25024011:      Boat, Rv, Van, Etc.
+
+
+      6. Units In Structure
+         Universe:  Universe:  Housing units
+         Name:      B25024_se
+         Variables:
+            B25024001s:   Std. Error: Total:
+            B25024002s:      Std. Error: 1, Detached
+            B25024003s:      Std. Error: 1, Attached
+            B25024004s:      Std. Error: 2
+            B25024005s:      Std. Error: 3 Or 4
+            B25024006s:      Std. Error: 5 To 9
+            B25024007s:      Std. Error: 10 To 19
+            B25024008s:      Std. Error: 20 To 49
+            B25024009s:      Std. Error: 50 Or More
+            B25024010s:      Std. Error: Mobile Home
+            B25024011s:      Std. Error: Boat, Rv, Van, Etc.
+
+
+
+
+
+ 
+ 
+ 
+--------------------------------------------------------------------------------
+Data Dictionary
+--------------------------------------------------------------------------------
+ 
+Variables 
+      FIPS:           FIPS
+      GEOID:          Geographic Identifier
+      NAME:           Name of Area
+      QName:          Qualifying Name
+      STUSAB:         State/U.S.-Abbreviation (USPS)
+      SUMLEV:         Summary Level
+      GEOCOMP:        Geographic Component
+      FILEID:         File Identification
+      LOGRECNO:       Logical Record Number
+      US:             US
+      REGION:         Region
+      DIVISION:       Division
+      STATECE:        State (Census Code)
+      STATE:          State (FIPS)
+      COUNTY:         County
+      COUSUB:         County Subdivision (FIPS)
+      PLACE:          Place (FIPS Code)
+      PLACESE:        Place (State FIPS + Place FIPS)
+      TRACT:          Census Tract
+      BLKGRP:         Block Group
+      CONCIT:         Consolidated City
+      AIANHH:         American Indian Area/Alaska Native Area/Hawaiian Home Land (Census)
+      AIANHHFP:       American Indian Area/Alaska Native Area/Hawaiian Home Land (FIPS)
+      AIHHTLI:        American Indian Trust Land/Hawaiian Home Land Indicator
+      AITSCE:         American Indian Tribal Subdivision (Census)
+      AITS:           American Indian Tribal Subdivision (FIPS)
+      ANRC:           Alaska Native Regional Corporation (FIPS)
+      CBSA:           Metropolitan and Micropolitan Statistical Area
+      CSA:            Combined Statistical Area
+      METDIV:         Metropolitan Division
+      MACC:           Metropolitan Area Central City
+      MEMI:           Metropolitan/Micropolitan Indicator Flag
+      NECTA:          New England City and Town Combined Statistical Area
+      CNECTA:         New England City and Town Area
+      NECTADIV:       New England City and Town Area Division
+      UA:             Urban Area
+      UACP:           Urban Area Central Place
+      CDCURR:         Current Congressional District ***
+      SLDU:           State Legislative District Upper
+      SLDL:           State Legislative District Lower
+      VTD:            Voting District
+      ZCTA3:          ZIP Code Tabulation Area (3-digit)
+      ZCTA5:          ZIP Code Tabulation Area (5-digit)
+      SUBMCD:         Subbarrio (FIPS)
+      SDELM:          School District (Elementary)
+      SDSEC:          School District (Secondary)
+      SDUNI:          School District (Unified)
+      UR:             Urban/Rural
+      PCI:            Principal City Indicator
+      TAZ:            Traffic Analysis Zone
+      UGA:            Urban Growth Area
+      BTTR:           Tribal Tract
+      BTBG:           Tribal Block Group
+      PUMA5:          Public Use Microdata Area - 5% File
+      PUMA1:          Public Use Microdata Area - 1% File
+      A00001_001:     Total Population
+      A03001_001:     Total Population:
+      A03001_002:     Total Population: White Alone
+      A03001_003:     Total Population: Black or African American Alone
+      A03001_004:     Total Population: American Indian and Alaska Native Alone
+      A03001_005:     Total Population: Asian Alone
+      A03001_006:     Total Population: Native Hawaiian and Other Pacific Islander Alone
+      A03001_007:     Total Population: Some Other Race Alone
+      A03001_008:     Total Population: Two or More Races
+      B04001_001:     Total Population
+      B04001_002:     Total Population: Not Hispanic or Latino
+      B04001_003:     Total Population: Not Hispanic or Latino: White Alone
+      B04001_004:     Total Population: Not Hispanic or Latino: Black or African American Alone
+      B04001_005:     Total Population: Not Hispanic or Latino: American Indian and Alaska Native Alone
+      B04001_006:     Total Population: Not Hispanic or Latino: Asian Alone
+      B04001_007:     Total Population: Not Hispanic or Latino: Native Hawaiian and Other Pacific Islander Alone
+      B04001_008:     Total Population: Not Hispanic or Latino: Some Other Race Alone
+      B04001_009:     Total Population: Not Hispanic or Latino: Two or More Races
+      B04001_010:     Total Population: Hispanic or Latino
+      A10010_001:     Households:
+      A10010_002:     Households: with a Householder Who Is White Alone
+      A10010_003:     Households: with a Householder Who Is Black or African  American Alone
+      A10010_004:     Households: with a Householder Who Is American Indian and  Alaska Native Alone
+      A10010_005:     Households: with a Householder Who Is Asian Alone
+      A10010_006:     Households: with a Householder Who Is Native Hawaiian and  Other Pacific Islander Alone
+      A10010_007:     Households: with a Householder Who Is Some Other Race Alone
+      A10010_008:     Households: with a Householder Who Is Two or More Races
+      A10010_009:     Households: with a Householder Who Is Hispanic or Latino
+      A10010_010:     Households: with a Householder Who Is White Alone, Not  Hispanic or Latino
+      A03001B_001:    Renter-Occupied Housing Units
+      A03001B_002:    Renter-Occupied Housing Units: White Alone Householder
+      A03001B_003:    Renter-Occupied Housing Units: Black or African American Alone Householder
+      A03001B_004:    Renter-Occupied Housing Units: American Indian and Alaska Native Alone Householder
+      A03001B_005:    Renter-Occupied Housing Units: Asian Alone Householder
+      A03001B_006:    Renter-Occupied Housing Units: Native Hawaiian and Other Pacific Islander Alone Householder
+      A03001B_007:    Renter-Occupied Housing Units: Some Other Race Alone Householder
+      A03001B_008:    Renter-Occupied Housing Units: Two or More Races Householder
+      A03001B_009:    Renter-Occupied Housing Units: White Alone, Not Hispanic or Latino Householder
+      A03001B_010:    Renter-Occupied Housing Units: Hispanic or Latino Householder
+      A14001_001:     Households:
+      A14001_002:     Households: Less than $10,000
+      A14001_003:     Households: $10,000 to $14,999
+      A14001_004:     Households: $15,000 to $19,999
+      A14001_005:     Households: $20,000 to $24,999
+      A14001_006:     Households: $25,000 to $29,999
+      A14001_007:     Households: $30,000 to $34,999
+      A14001_008:     Households: $35,000 to $39,999
+      A14001_009:     Households: $40,000 to $44,999
+      A14001_010:     Households: $45,000 to $49,999
+      A14001_011:     Households: $50,000 to $59,999
+      A14001_012:     Households: $60,000 to $74,999
+      A14001_013:     Households: $75,000 to $99,999
+      A14001_014:     Households: $100,000 to $124,999
+      A14001_015:     Households: $125,000 to $149,999
+      A14001_016:     Households: $150,000 to $199,999
+      A14001_017:     Households: $200,000 or More
+      A14002_001:     Occupied Housing Units
+      A14002_002:     Occupied Housing Units: Less than $5,000
+      A14002_003:     Occupied Housing Units: $5,000 to $9,999
+      A14002_004:     Occupied Housing Units: $10,000 to $14,999
+      A14002_005:     Occupied Housing Units: $15,000 to $19,999
+      A14002_006:     Occupied Housing Units: $20,000 to $24,999
+      A14002_007:     Occupied Housing Units: $25,000 to $34,999
+      A14002_008:     Occupied Housing Units: $35,000 to $49,999
+      A14002_009:     Occupied Housing Units: $50,000 to $74,999
+      A14002_010:     Occupied Housing Units: $75,000 to $99,999
+      A14002_011:     Occupied Housing Units: $100,000 to $149,999
+      A14002_012:     Occupied Housing Units: $150,000 or More
+      A18002_001:     Renter-Occupied Housing Units:
+      A18002_002:     Renter-Occupied Housing Units: Less than 10 Percent
+      A18002_003:     Renter-Occupied Housing Units: 10 to 29 Percent
+      A18002_004:     Renter-Occupied Housing Units: 30 to 49 Percent
+      A18002_005:     Renter-Occupied Housing Units: 50 Percent or More
+      A18002_006:     Renter-Occupied Housing Units: Not Computed
+      B18002_001:     Renter-Occupied Housing Units
+      B18002_002:     Renter-Occupied Housing Units: 30 to 49 Percent
+      B18002_003:     Renter-Occupied Housing Units: 50 percent or More
+      A10066_001:     Households
+      A10066_002:     Households: 1-Person Household
+      A10066_003:     Households: 2-Person Household
+      A10066_004:     Households: 3-Person Household
+      A10066_005:     Households: 4-Person Household
+      A10066_006:     Households: 5-Person Household
+      A10066_007:     Households: 6-Person Household
+      A10066_008:     Households: 7-or-More Person Household
+      B19019001:       Total
+      B19019002:       Total:  1-Person Households
+      B19019003:       Total:  2-Person Households
+      B19019004:       Total:  3-Person Households
+      B19019005:       Total:  4-Person Households
+      B19019006:       Total:  5-Person Households
+      B19019007:       Total:  6-Person Households
+      B19019008:       Total:  7-Or-More-Person Households
+      B19019001s:     Std. Error: Median Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+      B19019002s:     Std. Error: Median Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+      B19019003s:     Std. Error: Median Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+      B19019004s:     Std. Error: Median Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+      B19019005s:     Std. Error: Median Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+      B19019006s:     Std. Error: Median Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+      B19019007s:     Std. Error: Median Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+      B19019008s:     Std. Error: Median Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+      B19025001:      Aggregate Household Income In The Past 12 Months (In 2018 Inflation-Adjusted Dollars)
+      B19025001s:     Std. Error:  Total:  7-Or-More-Person Households
+      B25024001:      Total
+      B25024002:      Total: 1 Detached
+      B25024003:      Total: 1 Attached
+      B25024004:      Total: 2
+      B25024005:      Total: 3 Or 4
+      B25024006:      Total: 5 To 9
+      B25024007:      Total: 10 To 19
+      B25024008:      Total: 20 To 49
+      B25024009:      Total: 50 Or More
+      B25024010:      Total: Mobile Home
+      B25024011:      Total: Boat Rv Van Etc.
+      B25024001s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+      B25024002s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+      B25024003s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+      B25024004s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+      B25024005s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+      B25024006s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+      B25024007s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+      B25024008s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+      B25024009s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+      B25024010s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+      B25024011s:     Std. Error: Aggregate Number Of Rooms: Renter Occupied
+
+
+
+
+--------------------------------------------------------------------------------
+Citation and Use of Data
+--------------------------------------------------------------------------------
+ 
+All persons are granted a limited license to use this documentation and the
+accompanying data, subject to the following conditions:
+
+* Publications and research reports employing the data
+  must cite it appropriately. The citation should include the following:
+
+	  www.socialexplorer.com
+	  New York City, NY: Social Explorer 2020
+
+
+* Citations should also include the URL for this report:
+
+    http://www.socialexplorer.com/pub/reportdata/HtmlResults.aspx?reportid=R12610460
+
+If you have any questions contact info@socialexplorer.com

@@ -1,0 +1,1159 @@
+---
+title: "CA Affordabulity"
+author: "Kyle Onda"
+date: "9/3/2020"
+output:
+  html_document: default
+  word_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidycensus)
+library(sf)
+library(beeswarm)
+library(knitr)
+library(stargazer)
+library(readxl)
+```
+
+## Data Sources
+
+### Census
+
+### OWRS Rate Information from CA Data Collaborative 
+
+### Service Area Boundaries from CA DWR
+
+### Water Loss Audits from CA DWR
+
+### Electronic Annual Report from CA SWRCB
+
+#### Infrastructure repair costs
+
+#### Cut-offs
+
+#### Customer assistance programs
+
+## Profile of prevalence of private water utilities in CA (c. 2017))
+```{r ear}
+inv <- read_excel("Data/EAR/inventory.xlsx",
+                  sheet = "SDWISWaterSystemInventory071620") %>% filter(WaterSystemType=="C")
+
+inv$size_cat[which(inv$Pop<=500)] = "1. Very Small (<500)" 
+inv$size_cat[which(inv$Pop>500)] = "2. Small (501-3300)" 
+inv$size_cat[which(inv$Pop>3301)] = "3. Medium (3301-10,000)" 
+inv$size_cat[which(inv$Pop>10001)] = "4. Large (10,001- 100,000)" 
+inv$size_cat[which(inv$Pop>100000)] = "5. Very Large (>100,000)" 
+
+size_summary <- inv %>% 
+  group_by(size_cat) %>%
+  add_tally() %>%
+  summarise(count=mean(n),pop=sum(Pop)/10^6) %>%
+  ungroup() %>%
+  mutate(perc_pop=100*pop/sum(pop))
+kable(size_summary, digits=1)
+
+# ear13 <- read_tsv("Data/EAR/earsurveyresults_2013ry.zip",col_types="ccdcccdddc")
+# ear14 <- read_tsv("Data/EAR/earsurveyresults_2014ry.zip",col_types="ccdcccdddc")
+# ear15 <- read_tsv("Data/EAR/earsurveyresults_2015ry.zip",col_types="ccdcccdddc")
+# ear16 <- read_tsv("Data/EAR/earsurveyresults_2016ry.zip",col_types="ccdcccdddc")
+# ear17 <- read_tsv("Data/EAR/earsurveyresults_2017ry.zip",col_types="ccdcccdddc")
+# ear18 <- read_tsv("Data/EAR/earsurveyresults_2018ry.zip",col_types="ccdcccdddc")
+# 
+# ear <- bind_rows(ear13,ear14,ear15,ear16,ear17,ear18)
+# rm(ear13,ear14,ear15,ear16,ear17,ear18)
+# save(ear,file="Data/EAR/ear.rds")
+load("Data/EAR/ear.rds")
+
+questions <- c("Population",
+               "Water System Classification",
+               "Water System Ownership",
+               "IsWholesaler",
+               "WR Type",
+               "WR 6 HCF DW Charges",
+               "WR 12 HCF DW Charges",
+               "T Potable Total",
+               "WR SHUT_OFFS Once No Collect",
+               "WR SHUT_OFFS Once SF Total",
+               "WR SHUT_OFFS More Than Once MF Total",
+               "WR SHUT_OFFS More Than Once SF Total",
+               "WR SHUT_OFFS Once MF Total",
+               "WR LL Subsidies",
+               "WR LL Eligibility-Low Income",
+               "WR LL Eligibility-Disabled",
+               "WR LL Eligibility-Medical",
+               "WR LL Eligibility-Other",
+               "WR LL Eligibility-Senior",
+               "WR LL Benefit Form",
+               "WR LL Funded",
+               "DIST Probs SC BL Num",
+                "DIST Probs SC BL Investigated",
+                "DIST Probs SC BL Reported to District",
+                "DIST Probs SC BL Cause",
+                "DIST Probs Main BL Num",
+                "DIST Probs Main BL Investigated",
+                "DIST Probs Main BL Reported to District",
+                "DIST Probs Main BL Cause",
+                "DIST Probs WO Num",
+                "DIST Probs WO Investigated",
+                "DIST Probs WO Reported to District",
+                "DIST Probs WO Cause",
+                "DIST Probs BWO Num",
+                "DIST Probs BWO Investigated",
+                "DIST Probs BWO Reported to District",
+                "DIST Probs BWO Cause",
+                "DIST Probs Total Num",
+                "DIST Probs Total Investigated",
+                "DIST Probs Total Reported to District",
+                "DIST Probs Comments",
+                "TREATMENT GW Problems",
+                "TREATMENT SW Problems",
+                "SLI Lead Number",
+                "SLI Lead Total Length",
+                "SLI Fittings NOT lead pipe",
+                "SLI Fittings Lead pipe",
+                "SLI Total Lead Service Lines",
+                "SLI Cast Number",
+                "SLI Copper Number",
+                "SLI Ductile Number",
+                "SLI Fittings Unknown",
+                "SLI Galvanized Number",
+                "SLI HDPE Number",
+                "SLI Identify material 1",
+                "SLI Identify material 2",
+                "SLI Identify material 3",
+                "SLI Identify material 4",
+                "SLI Material 1 Number",
+                "SLI Material 2 Number",
+                "SLI Material 3 Number",
+                "SLI Material 4 Number",
+                "SLI Polybutylene Number",
+                "SLI Polyethylene Number",
+                "SLI Polyvinyl Number",
+                "SLI TA cement Number",
+                "SLI Total Lead Service Lines",
+                "SLI Total Service Connections",
+                "SLI Total Service Lines",
+                "SLI Unknown Number",
+                "SLI Unknown Total Length",
+                "DIST Infra Rehabilitation Comments",
+                "DIST Infra Rehabilitation Expenditure",
+                "DIST Infra Rehabilitation Not Tracked",
+                "DIST Infra Rehabilitation Num Leaks",
+                "DIST Infra Rehabilitation Portion",
+                "DIST Infra Rehabilitation Real Loss",
+                "DIST Infra renewal table unit",
+                "DIST Infra Repair Comments",
+                "DIST Infra Repair Expenditure",
+                "DIST Infra Repair Not Tracked",
+                "DIST Infra Repair Num Leaks",
+                "DIST Infra Repair Portion",
+                "DIST Infra Repair Real Loss",
+                "DIST Infra Replacement Comments",
+                "DIST Infra Replacement Expenditure",
+                "DIST Infra Replacement Not Tracked",
+                "DIST Infra Replacement Num Leaks",
+                "DIST Infra Replacement Portion",
+                "DIST Infra Replacement Real Loss",
+                "DIST Infra Total Comments",
+                "DIST Infra Total Expenditure",
+                "DIST Infra Total Not Tracked",
+                "DIST Infra Total Num Leaks",
+                "DIST Infra Total Portion",
+                "DIST Infra Total Real Loss",
+                "Cur Total Connections",
+                "Inactive Connections",
+                "Connections meter records kept",
+                "Connections SF with outdoor irrigation meters",
+                "Connections MF with outdoor irrigation meters",
+                "Connections customers with indoor submeters",
+                "Connections Comment",
+                "DIST Interv Booster Average",
+                "DIST Interv Booster Comments",
+                "DIST Interv Booster Expenditure",
+                "DIST Interv Booster Not Tracked",
+                "DIST Interv Booster Portion",
+                "DIST Interv Other Average",
+                "DIST Interv Other Comments",
+                "DIST Interv Other Expenditure",
+                "DIST Interv Other Not Tracked",
+                "DIST Interv Other Portion",
+                "DIST Interv Pressure R Average",
+                "DIST Interv Pressure R Comments",
+                "DIST Interv Pressure R Expenditure",
+                "DIST Interv Pressure R Not Tracked",
+                "DIST Interv Pressure R Portion",
+                "DIST Interv Pressure T Average",
+                "DIST Interv Pressure T Comments",
+                "DIST Interv Pressure T Expenditure",
+                "DIST Interv Pressure T Not Tracked",
+                "DIST Interv Pressure T Portion",
+                "DIST Interv Reduced Average",
+                "DIST Interv Reduced Comments",
+                "DIST Interv Reduced Expenditure",
+                "DIST Interv Reduced Not Tracked",
+                "DIST Interv Reduced Portion",
+                "DIST Interv Total Average",
+                "DIST Interv Total Comments",
+                "DIST Interv Total Expenditure",
+                "DIST Interv Total Not Tracked",
+                "DIST Interv Total Portion",
+                "DIST 5 Year Expenditure",
+                "DIST 5 Year Summary Comments",
+                "DIST 5 Year Total Leaks",
+                "DIST 5 Year Water Loss" 
+               )
+
+
+
+own <- ear %>% 
+    filter(QuestionName %in% questions) %>% 
+    group_by(PWSID,Year,QuestionName) %>%
+     mutate(maxYear=max(Year)) %>%
+    ungroup() %>%
+  #  filter(Year == maxYear) %>%
+   select(PWSID, Year, QuestionName,  QuestionResults) %>% 
+    distinct(PWSID, Year, QuestionName, .keep_all=TRUE) %>%
+    pivot_wider(names_from = QuestionName,
+                values_from = QuestionResults) %>%
+  
+    filter(is.na(IsWholesaler)) %>%
+ #   mutate(Population = as.numeric(Population)) %>%
+    filter(`Water System Classification`=="Community Water System")
+    
+    
+
+save(own,file="Data/own.rds")
+
+
+bounds <- st_read("Data/boundaries.geojson") %>% 
+  filter(D_PWS_FED_=="C") %>% 
+  select(PWSID,NAME,D_POPULATI,SVC_CONNEC)
+
+
+b.x <- st_buffer(st_transform(bounds,3310),dist=0)
+
+
+own_boundaries <- select(own,PWSID,Year,`Water System Classification`, `Water System Ownership`)%>% 
+    group_by(PWSID) %>%
+     mutate(maxYear=max(Year))%>%filter(maxYear==Year)
+own_boundaries <- left_join(own_boundaries,b.x,by="PWSID") %>% filter(maxYear==Year)
+own_boundaries <- left_join(own_boundaries,select(inv,PWSID,Pop),by="PWSID") %>% ungroup()
+
+
+
+ua <- get_acs(geography = "urban area",
+                  variables = c("B01003_001E","B19013_001E"), geometry = TRUE)
+
+st <- get_acs(geography = "state",
+                  variables = "B01003_001E", geometry = TRUE) %>% filter(NAME=="California")
+
+ua <- ua[st,]
+ua <- st_transform(ua,3310)
+
+ua_data <- st_drop_geometry(ua)%>%pivot_wider(names_from=variable,values_from=estimate)
+
+ua <- ua %>% filter(variable=="B01003_001")
+
+own_boundaries <-st_as_sf(own_boundaries)
+ua <-st_as_sf(ua)
+
+own_ua <- st_join(own_boundaries,ua, largest=TRUE)
+
+own_ua$`Water System Ownership`[which(substr(own_ua$NAME.x,1,5)=="CALAM"| 
+                                       substr(own_ua$NAME.x,1,6)=="CAL AM" |
+                                        substr(own_ua$NAME.x,1,3)=="CWS") ] <- "Privately owned, PUC-regulated, for profit water company"
+
+own_ua <- own_ua %>% filter(`Water System Ownership` %in% c("Privately owned, non-PUC-regulated (Community Water System)",
+                                                            "Privately owned Mutual Water Company or Association",
+                                                            "Privately owned, PUC-regulated, for profit water company",
+                                                            "Local Government"))
+
+own_ua <- left_join(own_ua,pws.income2, by="PWSID")
+own_ua$estimate[which(is.na(own_ua$NAME.y))]<-0
+
+own_ua <- left_join(own_ua,ua_data,by="GEOID")
+
+pop_plot <- ggplot(own_ua,
+                   aes(y=`50th Percentile`,
+                       x=log10(estimate+1),
+                       color=`Water System Ownership`,
+                       size=Pop)) + 
+                     geom_point() + 
+                     scale_color_brewer(palette="Dark2") + 
+                     theme_minimal() + 
+                     scale_size(range=c(2,15),name="Service Population") + geom_jitter()
+
+wealth_plot<-ggplot(own_ua,
+                   aes(y=`50th Percentile`,
+                       x=B19013_001,
+                       color=`Water System Ownership`,
+                       size=Pop)) + 
+                     geom_point() + 
+                     scale_color_brewer(palette="Dark2") + 
+                     theme_minimal() + 
+                     scale_size(range=c(2,15),name="Service Population") + geom_jitter()
+
+
+
+summary(lm(`50th Percentile` ~ log1p(estimate) + as.factor(`Water System Ownership`) + log1p(Pop),data=own_ua))
+
+# census data
+census_api_key("b25f8b1b7bf10561c9cbc3a20a4d2572677f1f05")
+options(tigris_use_cache = TRUE)
+
+vars <- load_variables(2018, "acs5", cache = TRUE)
+
+census_vars <- c(median_income="B19013_001",
+                 pop_in_hh_with_income_assistance="B09010_002",
+                 pop_in_hh_with_no_income_assistance="B09010_008",
+                 hh_inc_5k="B19001_002",
+                 hh_inc_12.5k="B19001_003",
+                 hh_inc_17.5k="B19001_004",
+                 hh_inc_22.5k="B19001_005",
+                 hh_inc_27.5k="B19001_006",
+                 hh_inc_32.5k="B19001_007",
+                 hh_inc_37.5k="B19001_008",
+                 hh_inc_42.5k="B19001_009",
+                 hh_inc_47.5k="B19001_010",
+                 hh_inc_55k="B19001_011",
+                 hh_inc_67.5k="B19001_012",
+                 hh_inc_87.5k="B19001_013",
+                 hh_inc_112.5k="B19001_014",
+                 hh_inc_137.5k="B19001_015",
+                 hh_inc_175k="B19001_016",
+                 hh_inc_gr200k="B19001_017",
+                 hh_income_count = "B19001_001",
+                 hh_med_income_count = "B19019_001",
+                 hh_size_1_med_income = "B19019_002",
+                 hh_size_2_med_income = "B19019_003",
+                 hh_size_3_med_income = "B19019_004",
+                 hh_size_4_med_income = "B19019_005",
+                 hh_size_5_med_income = "B19019_006",
+                 hh_size_6_med_income = "B19019_007",
+                 hh_size_7plus_med_income = "B19019_008",
+                 avg_hh_size = "B25010_001",
+                 hh_inc_5k_rentcalc = 'B25122_002',
+                 hh_inc_15k_rentcalc = 'B25122_019',
+                 hh_inc_27.5k_rentcalc = 'B25122_036',
+                 hh_inc_42.5k_rentcalc = 'B25122_053',
+                 hh_inc_67.5k_rentcalc = 'B25122_070',
+                 hh_inc_87.5k_rentcalc = 'B25122_087',
+                 hh_inc_150k_rentcalc = 'B25122_104',
+                 hh_inc_5k_with_rent = 'B25122_004',
+                 hh_inc_5k_gross_rent_50 = 'B25122_004',
+                 hh_inc_5k_gross_rent_150 = 'B25122_005',
+                 hh_inc_5k_gross_rent_250 = 'B25122_006',
+                 hh_inc_5k_gross_rent_350 = 'B25122_007',
+                 hh_inc_5k_gross_rent_450 = 'B25122_008',
+                 hh_inc_5k_gross_rent_550 = 'B25122_009',
+                 hh_inc_5k_gross_rent_650 = 'B25122_010',
+                 hh_inc_5k_gross_rent_750 = 'B25122_011',
+                 hh_inc_5k_gross_rent_850 = 'B25122_012',
+                 hh_inc_5k_gross_rent_950 = 'B25122_013',
+                 hh_inc_5k_gross_rent_1100 = 'B25122_014',
+                 hh_inc_5k_gross_rent_1325 = 'B25122_015',
+                 hh_inc_5k_gross_rent_1750 = 'B25122_016',
+                 hh_inc_5k_gross_rent_2500 = 'B25122_017',
+                 hh_inc_15k_with_rent = 'B25122_020',
+                 hh_inc_15k_gross_rent_50 = 'B25122_021',
+                 hh_inc_15k_gross_rent_150 = 'B25122_022',
+                 hh_inc_15k_gross_rent_250 = 'B25122_023',
+                 hh_inc_15k_gross_rent_350 = 'B25122_024',
+                 hh_inc_15k_gross_rent_450 = 'B25122_025',
+                 hh_inc_15k_gross_rent_550 = 'B25122_026',
+                 hh_inc_15k_gross_rent_650 = 'B25122_027',
+                 hh_inc_15k_gross_rent_750 = 'B25122_028',
+                 hh_inc_15k_gross_rent_850 = 'B25122_029',
+                 hh_inc_15k_gross_rent_950 = 'B25122_030',
+                 hh_inc_15k_gross_rent_1100 = 'B25122_031',
+                 hh_inc_15k_gross_rent_1325 = 'B25122_032',
+                 hh_inc_15k_gross_rent_1750 = 'B25122_033',
+                 hh_inc_15k_gross_rent_2500 = 'B25122_034',         
+                 hh_inc_27.5k_with_rent = 'B25122_037',
+                 hh_inc_27.5k_gross_rent_50 = 'B25122_038',
+                 hh_inc_27.5k_gross_rent_150 = 'B25122_039',
+                 hh_inc_27.5k_gross_rent_250 = 'B25122_040',
+                 hh_inc_27.5k_gross_rent_350 = 'B25122_041',
+                 hh_inc_27.5k_gross_rent_450 = 'B25122_042',
+                 hh_inc_27.5k_gross_rent_550 = 'B25122_043',
+                 hh_inc_27.5k_gross_rent_650 = 'B25122_044',
+                 hh_inc_27.5k_gross_rent_750 = 'B25122_045',
+                 hh_inc_27.5k_gross_rent_850 = 'B25122_046',
+                 hh_inc_27.5k_gross_rent_950 = 'B25122_047',
+                 hh_inc_27.5k_gross_rent_1100 = 'B25122_048',
+                 hh_inc_27.5k_gross_rent_1325 = 'B25122_049',
+                 hh_inc_27.5k_gross_rent_1750 = 'B25122_050',
+                 hh_inc_27.5k_gross_rent_2500 = 'B25122_051',                  
+                 hh_inc_42.5k_with_rent = 'B25122_054',
+                 hh_inc_42.5k_gross_rent_50 = 'B25122_055',
+                 hh_inc_42.5k_gross_rent_150 = 'B25122_056',
+                 hh_inc_42.5k_gross_rent_250 = 'B25122_057',
+                 hh_inc_42.5k_gross_rent_350 = 'B25122_058',
+                 hh_inc_42.5k_gross_rent_450 = 'B25122_059',
+                 hh_inc_42.5k_gross_rent_550 = 'B25122_060',
+                 hh_inc_42.5k_gross_rent_650 = 'B25122_061',
+                 hh_inc_42.5k_gross_rent_750 = 'B25122_062',
+                 hh_inc_42.5k_gross_rent_850 = 'B25122_063',
+                 hh_inc_42.5k_gross_rent_950 = 'B25122_064',
+                 hh_inc_42.5k_gross_rent_1100 = 'B25122_065',
+                 hh_inc_42.5k_gross_rent_1325 = 'B25122_066',
+                 hh_inc_42.5k_gross_rent_1750 = 'B25122_067',
+                 hh_inc_42.5k_gross_rent_2500 = 'B25122_068',
+                 hh_inc_62.5k_with_rent = 'B25122_071',
+                 hh_inc_62.5k_gross_rent_50 = 'B25122_072',
+                 hh_inc_62.5k_gross_rent_150 = 'B25122_073',
+                 hh_inc_62.5k_gross_rent_250 = 'B25122_074',
+                 hh_inc_62.5k_gross_rent_350 = 'B25122_075',
+                 hh_inc_62.5k_gross_rent_450 = 'B25122_076',
+                 hh_inc_62.5k_gross_rent_550 = 'B25122_077',
+                 hh_inc_62.5k_gross_rent_650 = 'B25122_078',
+                 hh_inc_62.5k_gross_rent_750 = 'B25122_079',
+                 hh_inc_62.5k_gross_rent_850 = 'B25122_080',
+                 hh_inc_62.5k_gross_rent_950 = 'B25122_081',
+                 hh_inc_62.5k_gross_rent_1100 = 'B25122_082',
+                 hh_inc_62.5k_gross_rent_1325 = 'B25122_083',
+                 hh_inc_62.5k_gross_rent_1750 = 'B25122_084',
+                 hh_inc_62.5k_gross_rent_2500 = 'B25122_085', 
+                 hh_inc_82.5k_with_rent = 'B25122_088',
+                 hh_inc_82.5k_gross_rent_50 = 'B25122_089',
+                 hh_inc_82.5k_gross_rent_150 = 'B25122_090',
+                 hh_inc_82.5k_gross_rent_250 = 'B25122_091',
+                 hh_inc_82.5k_gross_rent_350 = 'B25122_092',
+                 hh_inc_82.5k_gross_rent_450 = 'B25122_093',
+                 hh_inc_82.5k_gross_rent_550 = 'B25122_094',
+                 hh_inc_82.5k_gross_rent_650 = 'B25122_095',
+                 hh_inc_82.5k_gross_rent_750 = 'B25122_096',
+                 hh_inc_82.5k_gross_rent_850 = 'B25122_097',
+                 hh_inc_82.5k_gross_rent_950 = 'B25122_098',
+                 hh_inc_82.5k_gross_rent_1100 = 'B25122_099',
+                 hh_inc_82.5k_gross_rent_1325 = 'B25122_100',
+                 hh_inc_82.5k_gross_rent_1750 = 'B25122_101',
+                 hh_inc_82.5k_gross_rent_2500 = 'B25122_102', 
+                 hh_inc_150k_with_rent = 'B25122_105',
+                 hh_inc_150k_gross_rent_50 = 'B25122_106',
+                 hh_inc_150k_gross_rent_150 = 'B25122_107',
+                 hh_inc_150k_gross_rent_250 = 'B25122_108',
+                 hh_inc_150k_gross_rent_350 = 'B25122_109',
+                 hh_inc_150k_gross_rent_450 = 'B25122_110',
+                 hh_inc_150k_gross_rent_550 = 'B25122_111',
+                 hh_inc_150k_gross_rent_650 = 'B25122_112',
+                 hh_inc_150k_gross_rent_750 = 'B25122_113',
+                 hh_inc_150k_gross_rent_850 = 'B25122_114',
+                 hh_inc_150k_gross_rent_950 = 'B25122_115',
+                 hh_inc_150k_gross_rent_1100 = 'B25122_116',
+                 hh_inc_150k_gross_rent_1325 = 'B25122_117',
+                 hh_inc_150k_gross_rent_1750 = 'B25122_118',
+                 hh_inc_150k_gross_rent_2500 = 'B25122_119' 
+                 )
+
+
+tracts <- get_acs(state = "CA", geography = "tract",
+                  variables = census_vars, geometry = TRUE)
+save(tracts,file="Data/census_tracts.rds")
+
+census_vars2 <- c(median_income="B19013_001",
+                 pop_in_hh_with_income_assistance="B09010_002",
+                 pop_in_hh_with_no_income_assistance="B09010_008",
+                 hh_inc_5k="B19001_002",
+                 hh_inc_12.5k="B19001_003",
+                 hh_inc_17.5k="B19001_004",
+                 hh_inc_22.5k="B19001_005",
+                 hh_inc_27.5k="B19001_006",
+                 hh_inc_32.5k="B19001_007",
+                 hh_inc_37.5k="B19001_008",
+                 hh_inc_42.5k="B19001_009",
+                 hh_inc_47.5k="B19001_010",
+                 hh_inc_55k="B19001_011",
+                 hh_inc_67.5k="B19001_012",
+                 hh_inc_87.5k="B19001_013",
+                 hh_inc_112.5k="B19001_014",
+                 hh_inc_137.5k="B19001_015",
+                 hh_inc_175k="B19001_016",
+                 hh_inc_gr200k="B19001_017",
+                 hh_income_count = "B19001_001")
+
+bg <- get_acs(state = "CA", geography = "block group",
+                  variables = census_vars2, geometry = TRUE)
+
+save(bg,file="Data/census_blockgroups.rds")
+
+bounds <- st_read("Data/boundaries.geojson") %>% 
+  filter(D_PWS_FED_=="C") %>% 
+  select(PWSID,NAME,D_POPULATI,SVC_CONNEC)
+
+
+b.x <- st_buffer(st_transform(bounds,3310),dist=0)
+t.x <- tracts %>% filter(variable=="median_income") %>%
+  select(GEOID,NAME,geometry) %>%
+  st_transform(3310) %>%
+  st_buffer(dist=0) %>%
+  mutate(AreaTract = st_area(.))
+
+bg.x <- bg %>% filter(variable=="median_income") %>%
+  select(GEOID,NAME,geometry) %>%
+  st_transform(3310) %>%
+  st_buffer(dist=0) %>%
+  mutate(AreaBlockGroup = st_area(.))
+
+
+tracts.bounds <- st_intersection(b.x,t.x) 
+tracts.bounds$Area_TractPWS <- st_area(tracts.bounds)
+tracts.bounds$Percent_TractinPWS <- tracts.bounds$Area_TractPWS/tracts.bounds$AreaTract
+save(tracts.bounds,file="Data/tracts_bounds.rds")
+
+bg.bounds <- st_intersection(b.x,bg.x) 
+bg.bounds$Area_BlockGroupPWS <- st_area(bg.bounds)
+bg.bounds$Percent_BlockGroupinPWS <- bg.bounds$Area_BlockGroupPWS/bg.bounds$AreaBlockGroup
+save(bg.bounds,file="Data/block_groups_bounds.rds")
+
+### Find 20% and 50% Income quintile ranges by CWS (use block groups)
+pws.income <- bg.bounds %>% st_drop_geometry() %>%
+  left_join(bg,by="GEOID") %>%
+  filter(variable %in% c('hh_inc_5k',
+                 'hh_inc_12.5k',
+                 'hh_inc_17.5k',
+                 'hh_inc_22.5k',
+                 'hh_inc_27.5k',
+                 'hh_inc_32.5k',
+                 'hh_inc_37.5k',
+                 'hh_inc_42.5k',
+                 'hh_inc_47.5k',
+                 'hh_inc_55k',
+                 'hh_inc_67.5k',
+                 'hh_inc_87.5k',
+                 'hh_inc_112.5k',
+                 'hh_inc_137.5k',
+                 'hh_inc_175k',
+                 'hh_inc_gr200k')) %>%
+  group_by(PWSID,variable) %>%
+  summarise(estimate=sum(estimate*Percent_BlockGroupinPWS)) %>% 
+  ungroup() %>%
+  mutate(var2=case_when(variable=="hh_inc_5k" ~ 1,
+                 variable=="hh_inc_12.5k" ~ 2,
+                 variable=="hh_inc_17.5k" ~ 3,
+                 variable=="hh_inc_22.5k" ~ 4,
+                 variable=="hh_inc_27.5k" ~ 5,
+                 variable=="hh_inc_32.5k" ~ 6,
+                 variable=="hh_inc_37.5k" ~ 7,
+                 variable=="hh_inc_42.5k" ~ 8,
+                 variable=="hh_inc_47.5k" ~ 9,
+                 variable=="hh_inc_55k" ~ 10,
+                 variable=="hh_inc_67.5k" ~ 11,
+                 variable=="hh_inc_87.5k" ~ 12,
+                 variable=="hh_inc_112.5k" ~ 13,
+                 variable=="hh_inc_137.5k" ~ 14,
+                 variable=="hh_inc_175k" ~ 15,
+                 variable=="hh_inc_gr200k" ~ 16,)) %>% 
+  arrange(PWSID,var2) %>% 
+  group_by(PWSID) %>%
+  mutate(cum_inc_sum = cumsum(estimate),
+         percentile_inc = 100*cum_inc_sum/sum(estimate)) %>%
+  ungroup() %>%
+  mutate(perc_dist20=abs(as.numeric(percentile_inc)-20),
+         perc_dist50=abs(as.numeric(percentile_inc)-50)) %>%
+  group_by(PWSID) %>%
+  filter(perc_dist20==min(perc_dist20) | 
+         perc_dist50==min(perc_dist50)) %>%
+  mutate(percentile=case_when(var2==min(var2)~"20th Percentile",
+                              var2==max(var2)~"50th Percentile"),
+         income_perc=case_when(var2==1 ~ 5000,
+                               var2==2 ~ 12500,
+                               var2==3 ~ 17500,
+                               var2==4 ~ 22500,
+                               var2==5 ~ 27500,
+                               var2==6 ~ 32500,
+                               var2==7 ~ 37500,
+                               var2==8 ~ 42500,
+                               var2==9 ~ 47500,
+                               var2==10 ~ 55000,
+                               var2==11 ~ 67500,
+                               var2==12 ~ 87500,
+                               var2==13 ~ 112500,
+                               var2==14 ~ 137500,
+                               var2==15 ~ 175000,
+                               var2==16 ~ 225000)
+         ) %>%
+  pivot_wider(id_cols=PWSID,names_from=percentile,values_from=income_perc)
+  
+pws.income2 <-unnest(pws.income, cols = c(`20th Percentile`, `50th Percentile`, `NA`)) %>%
+  select(PWSID,`20th Percentile`,`50th Percentile`) %>% distinct(.keep_all=TRUE)
+
+save(pws.income2,file="Data/pws_income2.rds")
+
+load("Data/own.rds")
+
+### Find "disposable income" at 20% range
+
+pws.rent <-  bg.bounds %>% 
+  st_drop_geometry() %>%
+  left_join(tracts,by="GEOID") %>%
+  filter(variable=)
+
+##### 1. 
+##Take rent distribution within the range corresponding to the bracket that the 20% income quintile is.
+
+## Take median gross rent.
+## Calc "disoposable income" = 20% income/12 - median gross rent + water at 6hcf bill
+## Calc AR20_hh3 = 6hcf bill/disposable income
+## Cacl AR20_hh6 = 12hcf bill/ disposable incoem
+
+
+
+
+tracts.b<-tracts[bounds,]
+
+tracts.b %>%
+  ggplot(aes(fill = estimate)) +
+  geom_sf(color = NA) +
+  coord_sf(crs = 26911) +
+  scale_fill_viridis_c(option = "magma")
+
+## Assign tracts to pws
+
+```
+
+There are  2,917 Community Water Systems (defined as water systems serving at least 15 residential units on a year-round basis, generally applying to all municipal and institutional systems with residential components, but not commercial, school, and recreational facilities). Of these, 97.6% of the population is  served by the 658 systems that serve more than 3,300 people, while only 2.4% of the population is served by 2,259
+small systems.
+
+Overall, while 38% of community water systems are privately owned, they are disproportionately small systems, and so they only serve about 18% of the population. 94% of the population served by private utilities are served by utlities with more than 3,300 people. 
+<!-- # ```{r boundaries, echo=FALSE,results='asis',message=FALSE, warning=FALSE} -->
+<!-- # b <- st_read("Data/boundaries.geojson") %>% filter(D_PWS_FED_=="C")  -->
+<!-- # b$size_cat= NA -->
+<!-- #  -->
+<!-- # b$size_cat[which(b$D_POPULATI<=500)] = "1. Very Small (<500)"  -->
+<!-- # b$size_cat[which(b$D_POPULATI>500)] = "2. Small (501-3300)"  -->
+<!-- # b$size_cat[which(b$D_POPULATI>3301)] = "3. Medium (3301-10,000)"  -->
+<!-- # b$size_cat[which(b$D_POPULATI>10001)] = "4. Large (10,001- 100,000)"  -->
+<!-- # b$size_cat[which(b$D_POPULATI>100000)] = "5. Very Large (>100,000)"  -->
+<!-- #  -->
+<!-- # b$Ownership <-"Public" -->
+<!-- # b$Ownership[which(b$OWNER_TYPE=="P")]<-"Private" -->
+<!-- #  -->
+<!-- # size_summary <- b %>% group_by(size_cat)%>%add_tally()%>%summarise(count=mean(n),pop=sum(D_POPULATI)/10^6)%>%st_drop_geometry() -->
+<!-- #  -->
+<!-- # size_summary$perc_pop <- 100*size_summary$pop/sum(size_summary$pop) -->
+<!-- # size_summary <- arrange(size_summary,size_cat) -->
+<!-- # kable(size_summary, caption= "Size and population distribution of CA Water Utilities",digits=1) -->
+<!-- #  -->
+<!-- # private <- b%>%group_by(Ownership)%>%add_tally()%>%summarize(count=mean(n),pop=sum(D_POPULATI)/10^6)%>%st_drop_geometry() %>% ungroup()%>%mutate(perc_pop=100*pop/sum(pop)) -->
+<!-- # kable(private, caption= "Population served by public and private utilities in CA",digits=1) -->
+<!-- #  -->
+<!-- # size_summary.p <- b %>% group_by(size_cat,Ownership)%>%add_tally()%>%summarise(count=mean(n),pop=sum(D_POPULATI)/10^6)%>%st_drop_geometry() -->
+<!-- #  -->
+<!-- # size_summary.p$perc_pop <- 100*size_summary.p$pop/sum(size_summary.p$pop) -->
+<!-- # size_summary.p <- arrange(size_summary.p,size_cat,Ownership) -->
+<!-- # kable(size_summary.p, caption= "Size and population distribution and ownership of CA Water Utilities",digits=1) -->
+<!-- #  -->
+<!-- #  -->
+<!-- # ``` -->
+
+## Then parse the water rates
+
+A common concern with private water utilities is that they would abuse their local monopolies and exploit market power to maximize profits and raise prices. It is difficult to ascertain the actual short and long-run costs of water utilities in the United States. It is also difficult to directly compare water prices across utilities, because there are complex rate structures such as increasing and decreasing block rates, seasonally varying rates, and water budget - based rates that vary with consumption levels. Moreover, in many places, the bulk of residential water use is spent on outdoor water uses such as lawn irrigation that are less salient to those concerned about affordability. Here, I use a survey of the rate structures of 387 (of which 79 are privately owned) of the largest CA utilities (comprising 30.5 million people, or 79% of the population served by water utilities in CA) in effect as of 2017 to calculate the average monthly water bill for households sized 1-7, assuming a reasonable water use for domestic purposes at 50 gallons per capita per day, in line with otehr scholars (M Teodoro 20xx, J Mumm 20XX, WHO 2011). 
+
+A  caveat here is that this subset of utilities for the most part represents phenomenon in larger California utilities. Cost structures and dynamics affecting water pricing and privatization in rural areas may differ substantially from those in urban areas. Below, we see that the vast majority of utilities with rates available for analysis have service populations greater than 1,000. 
+
+```{r rates pop,echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+rates <- read_csv("Data/affordability.csv")
+rates <- left_join(rates,pws.income2,by=c("pwsid"="PWSID"))
+rates <- left_join(rates,own,by=c("pwsid"="PWSID"))
+rates$AR20 <- rates$total_bill_by_hhsize*12/rates$`20th Percentile`
+rates$MHI <- rates$total_bill_by_hhsize*12/rates$`50th Percentile`
+rates <- left_join(rates,inv,by=c("pwsid"="PWSID"))
+
+
+affordability <- rates %>% select(pwsid,Year,hh_sizes,total_bill_by_hhsize,AR20,MHI,MH,`20th Percentile`, `50th Percentile`, `Water System Classification`, `Water System Ownership`,Pop ) %>% filter(Year>=2017 & `Water System Ownership` %in% c("Local Government","Privately owned Mutual Water Company or Association", "Privately owned, non-PUC-regulated (Community Water System)","Privately owned, PUC-regulated, for profit water company") & !is.na(AR20)) %>% distinct(pwsid,hh_sizes,AR20,.keep_all=TRUE)
+
+wealth <- filter(affordability,hh_sizes==3)
+
+shut_offs <- select(own,PWSID,Year,`T Potable Total`,`WR SHUT_OFFS Once No Collect`,
+                    `WR SHUT_OFFS Once SF Total`,`WR SHUT_OFFS Once MF Total`,
+                    `WR SHUT_OFFS More Than Once SF Total`, `WR SHUT_OFFS More Than Once MF Total`)
+shut_offs$conn <- as.numeric(shut_offs$`T Potable Total`)
+shut_offs <- shut_offs %>% mutate_at(c("WR SHUT_OFFS Once SF Total",
+                                                   "WR SHUT_OFFS Once MF Total",
+                                                   "WR SHUT_OFFS More Than Once SF Total",
+                                                   "WR SHUT_OFFS More Than Once MF Total"), as.numeric)
+
+shut_offs <- shut_offs%>%rowwise()%>%mutate(shutoffs=sum(c_across(cols=c("WR SHUT_OFFS Once SF Total",
+                                                   "WR SHUT_OFFS Once MF Total",
+                                                   "WR SHUT_OFFS More Than Once SF Total",
+                                                   "WR SHUT_OFFS More Than Once MF Total")),na.omit=TRUE))
+
+shut_offs$shutoffs=shut_offs$shutoffs-1
+shut_offs$shutoff_SF_once_mult_ratio = shut_offs$`WR SHUT_OFFS Once SF Total`/shut_offs$`WR SHUT_OFFS More Than Once SF Total`
+  
+
+
+
+problems <- select(own,PWSID,Year,`DIST Probs BWO Num`,
+                   `DIST Probs Main BL Num`,
+                   `DIST Probs SC BL Num`,
+                   `DIST Probs WO Num`,
+                   `DIST Probs BWO Num`,
+                   `DIST Probs Total Num`
+                   ) %>% group_by(PWSID)%>%summarise(breaks=mean(as.numeric(`DIST Probs Main BL Num`),na.omit=TRUE),bwo=mean(as.numeric(`DIST Probs BWO Num`),na.omit=TRUE), wo=mean(as.numeric(`DIST Probs WO Num`),na.omit=TRUE))
+
+wealth <- left_join(wealth,shut_offs,by=c("pwsid"="PWSID"))
+wealth <- left_join(wealth,problems,by=c("pwsid"="PWSID"))
+
+
+
+
+ lead <- own%>%select(PWSID,Year,`SLI Lead Number`,
+                `SLI Lead Total Length`)
+ 
+ subs <- own %>% select(PWSID,Year,`WR LL Subsidies`,
+               `WR LL Eligibility-Low Income`,
+               `WR LL Eligibility-Disabled`,
+               `WR LL Eligibility-Medical`,
+               `WR LL Eligibility-Other`)
+
+ subs <- subs%>%mutate(any=(`WR LL Subsidies`!="No" & `WR LL Subsidies`!="-" |
+                       !is.na(`WR LL Eligibility-Low Income`)|
+                     !is.na(`WR LL Eligibility-Disabled`)|
+                     !is.na(`WR LL Eligibility-Medical`)|
+                     !is.na(`WR LL Eligibility-Other`))) %>%
+   select(PWSID,Year,any) %>%
+   group_by(PWSID) %>% filter(!is.na(any)) %>%
+   mutate(maxYear=max(Year)) %>% ungroup() %>% filter(maxYear==Year)
+ 
+rehab <- own %>% select(PWSID,Year, `DIST Infra Rehabilitation Expenditure`,
+                `DIST Infra Rehabilitation Not Tracked`,
+                `DIST Infra Rehabilitation Num Leaks`,
+                `DIST Infra Rehabilitation Portion`,
+                `DIST Infra Rehabilitation Real Loss`,
+                `DIST Infra renewal table unit`,
+                `DIST Infra Repair Comments`,
+                `DIST Infra Repair Expenditure`,
+                `DIST Infra Repair Not Tracked`,
+                `DIST Infra Repair Num Leaks`,
+                `DIST Infra Repair Portion`,
+                `DIST Infra Repair Real Loss`,
+                `DIST Infra Replacement Comments`,
+                `DIST Infra Replacement Expenditure`,
+                `DIST Infra Replacement Not Tracked`,
+                `DIST Infra Replacement Num Leaks`,
+                `DIST Infra Replacement Portion`,
+                `DIST Infra Replacement Real Loss`,
+                `DIST Infra Total Comments`,
+                `DIST Infra Total Expenditure`,
+                `DIST Infra Total Not Tracked`,
+                `DIST Infra Total Num Leaks`,
+                `DIST Infra Total Portion`,
+                `DIST Infra Total Real Loss`)
+
+
+tab.wealth <- wealth %>% group_by(`Water System Ownership`) %>% summarise(perc20=mean(`20th Percentile`,na.rm=TRUE),perc50=mean(`50th Percentile`,na.rm=TRUE))
+
+
+priv <- select(b,PWSID,Ownership,D_POPULATI)
+rates <- left_join(rates,b,by=c("pwsid"="PWSID")) 
+rates <- rates[which(!is.na(rates$Ownership)),]
+ggplot(rates, aes(x=log10(D_POPULATI), fill=Ownership)) +
+  geom_density(alpha=0.4)
+# Add mean lines
+# ear13 <- read_tsv("Data/EAR/earsurveyresults_2013ry.zip",col_types="ccdcccdddc")
+# ear14 <- read_tsv("Data/EAR/earsurveyresults_2014ry.zip",col_types="ccdcccdddc")
+# ear15 <- read_tsv("Data/EAR/earsurveyresults_2015ry.zip",col_types="ccdcccdddc")
+# ear16 <- read_tsv("Data/EAR/earsurveyresults_2016ry.zip",col_types="ccdcccdddc")
+# ear17 <- read_tsv("Data/EAR/earsurveyresults_2017ry.zip",col_types="ccdcccdddc")
+# ear18 <- read_tsv("Data/EAR/earsurveyresults_2018ry.zip",col_types="ccdcccdddc")
+# 
+# ear <- bind_rows(ear13,ear14,ear15,ear16,ear17,ear18)
+# rm(ear13,ear14,ear15,ear16,ear17,ear18)
+# save(ear,file="Data/EAR/ear.rds")
+load("Data/EAR/ear.rds")
+ear$QCat<-substr(ear$QuestionName,1,2)
+
+wr <- filter(ear,QCat=="WR")
+
+hcf <- ear %>% 
+  filter(Year==2017 & (QuestionName=='WR 6 HCF DW Charges' |QuestionName=='WR 12 HCF DW Charges' )) %>% 
+  distinct(.keep_all=TRUE) %>%
+  mutate(ConsLevel=QuestionName,
+         MonthlyBill=as.numeric(QuestionResults)) %>%
+  select(PWSID,ConsLevel,MonthlyBill)
+  
+#hcf12 <- filter(ear, QuestionName =="WR 12 HCF DW Charges")
+
+```
+
+
+
+I then compare the monthly water bill (averaged to month for utilities with bimonthly, quarterly, and annual water bill regimes) for housheolds of size 1-7 between public and private utilities. In general, it does indeed seem to be the case that private utilties charge more on average for water than public utilities. Regression results show that on average, private utilties charge between \$3.50 and \$9.50  more per month depending on consumption levels than public utilies. 
+
+```{r rates, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+r <- left_join(b,hcf,by="PWSID")
+wr_types <- wr %>% 
+  filter(QuestionName=="WR Type") %>% 
+  group_by(PWSID) %>% 
+  mutate(maxYear=max(Year)) %>% 
+  ungroup() %>% 
+  filter(Year==maxYear)
+
+no_rates <- wr_types %>% 
+  filter(QuestionResults=="-" | QuestionResults=="N/A") %>% 
+  mutate(rateType=QuestionResults) %>%
+  distinct(PWSID,.keep_all=TRUE) 
+
+has_rates <- filter(wr, QuestionName=="WR Type") %>% distinct(PWSID)
+
+r <- anti_join(r,no_rates,by="PWSID")
+r <- semi_join(r,has_rates,by="PWSID")
+
+
+r$Private <- 0
+r$Private[which(r$Ownership=="Private")]<-1
+r$MonthlyBill[which(r$MonthlyBill>1000)]<-NA
+ggplot(filter(r, MonthlyBill>0), aes(x=as.factor(ConsLevel), y=MonthlyBill, colour=Ownership)) +
+  geom_boxplot() 
+
+ggplot(wealth, aes(x=log10(Pop),y=AR20, shape=any, color=`Water System Ownership`)) +
+  geom_point(alpha=0.5) +
+  geom_hline(yintercept=0.035) +
+  scale_size(range=c(1,10),name="Service Population")
+
+ggplot(wealth, aes(x=`20th Percentile`,y=MH, size=Pop, color=`Water System Ownership`)) +
+  geom_point(alpha=0.5) +
+  geom_hline(yintercept=0.035) +
+  scale_size(range=c(1,10),name="Service Population")
+
+
+ggplot(wealth, aes(x=`50th Percentile`,y=AR20, size=Pop, color=`Water System Ownership`)) +
+  geom_point(alpha=0.5) +
+  geom_hline(yintercept=0.035) +
+  scale_size(range=c(1,10),name="Service Population")
+
+ggplot(wealth, aes(y=total_bill_by_hhsize,x=log10(Pop), size=AR20, color=`Water System Ownership`)) +
+  geom_point(alpha=0.5) +
+  geom_hline(yintercept=0.035) +
+  scale_size(range=c(1,10),name="Affordability Ratio")
+
+
+mr1<-lm(MonthlyBill~Private,data=r[which(r$ConsLevel=="WR 6 HCF DW Charges" & r$MonthlyBill>0),])
+mr2<-lm(MonthlyBill~Private,data=r[which(r$ConsLevel=="WR 12 HCF DW Charges"& r$MonthlyBill>0),])
+
+mr1.w<-lm(MonthlyBill~Private,data=r[which(r$ConsLevel=="WR 6 HCF DW Charges" & r$MonthlyBill>0),],weights=r$D_POPULATI[which(r$ConsLevel=="WR 6 HCF DW Charges" & r$MonthlyBill>0)])
+mr2.w<-lm(MonthlyBill~Private,data=r[which(r$ConsLevel=="WR 12 HCF DW Charges"& r$MonthlyBill>0),],weights=r$D_POPULATI[which(r$ConsLevel=="WR 12 HCF DW Charges"& r$MonthlyBill>0)])
+
+rates$Private <- 0
+rates$Private[which(rates$Ownership=="Private")]<-1
+ggplot(rates, aes(x=as.factor(hh_sizes), y=total_bill_by_hhsize, colour=Ownership)) +
+  geom_boxplot() 
+ggplot(rates, aes(x=as.factor(hh_sizes), y=total_bill_by_hhsize, colour=Ownership)) +
+  geom_boxplot() 
+
+m1<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==1),])
+m2<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==2),])
+m3<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==3),])
+m4<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==4),])
+m5<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==5),])
+m6<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==6),])
+m7<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==7),])
+stargazer(m1,m2,m3,m4,m5,m6,m7,type='html')
+
+```
+
+However, might there be more complex patterns? For example, due to economies of scale, it's possible that larger utilities need to charge less for water. There does seem to be a negative correlation between utility size and water charges. Regressions indicate here that in general, across levels of consumption assuming households size 1-7, a doubling in service population is associated with a 5% decrease in monthly water bill (statistically significant <0.001). 
+
+```{r rates by size, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+ggplot(rates, aes(x=log(D_POPULATI+1), y=log(total_bill_by_hhsize), color=as.factor(hh_sizes), shape=as.factor(hh_sizes))) +
+  geom_point() + 
+  geom_smooth(method=lm)
+
+ggplot(filter(rates,hh_sizes==3), aes(x=log(D_POPULATI+1), y=log(total_bill_by_hhsize), color=as.factor(Private), shape=as.factor(Private))) +
+  geom_point()
+
+
+ggplot(filter(r,MonthlyBill>0 & ConsLevel=="WR 6 HCF DW Charges" & D_POPULATI>10000), aes(x=log(D_POPULATI), y=log(MonthlyBill), color=as.factor(Private))) +
+  geom_point() + 
+  geom_smooth(method=lm)
+
+```
+
+Since, we saw above that private utilities tend to be smaller than public ones, we can attempt to control for this. Below, we see that controlling for population size, on average private utilities tend to have 11-16% higher water bills for a given household size at 50gpcd than public utilities. Note that this is an average effect, and that the distributions of water bills do overlap substantially between public and private utilties. In any case, this correlation holds when adding county fixed effects to account for regional clustering factors (such as many of the private utilities being clustered in the Los Angeles area)
+
+```{r size private reg, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+m1<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==1),])
+m2<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==2),])
+m3<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==3),])
+m4<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==4),])
+m5<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==5),])
+m6<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==6),])
+m7<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==7),])
+stargazer(m1,m2,m3,m4,m5,m6,m7,type='html')
+
+
+r1<-lm(log(MonthlyBill)~log(D_POPULATI+1)+Private,data=r[which(r$ConsLevel=="WR 6 HCF DW Charges" & r$MonthlyBill>0 & r$D_POPULATI>3300),])
+r2<-lm(log(MonthlyBill)~log(D_POPULATI+1)+Private,data=r[which(r$ConsLevel=="WR 12 HCF DW Charges" & r$MonthlyBill>0 & r$D_POPULATI>3300),])
+
+stargazer(r1,r2,type='html')
+
+
+```
+
+
+
+## Shut-offs
+```{r shutoffs, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+conn <- ear %>% filter(SectionName=="Connections" & Year==2018)
+conn_sfr <- conn %>% filter(QuestionName=="SFR Potable Total" & Year==2018)
+conn_mfr <- conn %>% filter(QuestionName=="MFR Potable Total" & Year==2018)
+conn_total <- conn %>% filter(QuestionName=="T Potable Total" & Year==2018) %>% rename(connections=QuestionResults) %>% mutate(connections=as.numeric(connections)) %>% select(PWSID,connections) %>% distinct(.keep_all=TRUE)
+
+shutoffs <- ear %>% filter(substr(QuestionName,1,12)=="WR SHUT_OFFS" & Year==2018)
+
+pws_shutoff_collect <- shutoffs %>% filter(QuestionName=="WR SHUT_OFFS Once No Collect" & is.na(QuestionResults))
+
+shutoffs_total <- shutoffs %>%
+  filter(QuestionName=="WR SHUT_OFFS Once SF Total" |
+           QuestionName=="WR SHUT_OFFS More Than Once SF Total" |
+           QuestionName=="WR SHUT_OFFS More Than Once MF Total" |
+           QuestionName=="WR SHUT_OFFS Once SF Total") %>%
+  group_by(PWSID) %>%
+  summarise(shutoffs=sum(as.numeric(QuestionResults),na.rm=TRUE))%>%
+  select(PWSID,shutoffs) %>%
+  distinct(.keep_all=TRUE) %>% semi_join(pws_shutoff_collect,by="PWSID")
+
+shutoff_comments <- shutoffs %>% filter(QuestionName=="WR SHUT_OFFS Comments")
+  
+shutoff_pa<- ear%>%filter(QuestionName=="WR SHUT_OFFS Payment Assistance Total" & Year==2018) %>%distinct(PWSID, QuestionResults) %>% rename(shutoff_pa=QuestionResults) %>% filter(!is.na(shutoff_pa)) %>% mutate(shutoff_pa=as.numeric(shutoff_pa))
+
+conn_shutoff <- left_join(conn_total,shutoffs_total,by="PWSID") %>% mutate(shutoff_rate=shutoffs/connections) %>% filter(connections>0) %>% filter(shutoff_rate<=1)
+
+
+r_shutoff <- left_join(r,conn_shutoff,by="PWSID") %>% distinct(PWSID,connections,.keep_all=TRUE) 
+ggplot(r_shutoff, aes(x=size_cat, y=shutoff_rate, colour=Ownership)) +
+  geom_boxplot() 
+
+
+r_shutoff_model <- lm(
+  shutoff_rate ~ Private + log(D_POPULATI),
+  data = filter(r_shutoff, D_POPULATI>3300)
+#  family = quasibinomial
+)
+
+summary(r_shutoff_model)
+```
+
+## Subsidy/ Cost assistance programs
+```{r subsidies}
+subs <- ear %>% filter(substr(QuestionName,1,5)=="WR LL" & Year==2018)
+subsidies <- ear %>% 
+  filter(QuestionName=="WR LL Subsidies" & Year==2018) %>% 
+  #filter(QuestionResults!="-") %>% 
+  select(PWSID,QuestionResults) %>% 
+  rename(subsidy=QuestionResults) %>% distinct(.keep_all=TRUE) 
+
+subsidies_LI <- subs %>% 
+  filter(QuestionName=="WR LL Eligibility-Low Income" & Year==2018) %>% 
+  filter(QuestionResults!="-") %>%
+  select(PWSID,QuestionResults) %>%
+  rename(LowIncome=QuestionResults) %>% distinct(.keep_all=TRUE) %>% mutate(LowIncome="Yes")
+
+subsidies_D <- subs %>% 
+  filter(QuestionName=="WR LL Eligibility-Disabled" & Year==2018) %>% 
+  filter(QuestionResults!="-") %>%
+  select(PWSID,QuestionResults) %>%
+  rename(Disabled=QuestionResults) %>% distinct(.keep_all=TRUE)  %>% mutate(Disabled="Yes")
+
+subsidies_S <- subs %>% 
+  filter(QuestionName=="WR LL Eligibility-Seniors" & Year==2018) %>% 
+  filter(QuestionResults!="-") %>%
+  select(PWSID,QuestionResults) %>%
+  rename(Seniors=QuestionResults) %>% distinct(.keep_all=TRUE) %>% mutate(Seniors="Yes")
+
+subsidies_M <- subs %>% 
+  filter(QuestionName=="WR LL Eligibility-Medical" & Year==2018) %>% 
+  filter(QuestionResults!="-") %>%
+  select(PWSID,QuestionResults) %>%
+  rename(Medical=QuestionResults) %>% distinct(.keep_all=TRUE) %>% mutate(Medical="Yes")
+
+subsidies_O <- subs %>% 
+  filter(QuestionName=="WR LL Eligibility-Other" & Year==2018) %>% 
+  filter(QuestionResults!="-") %>%
+  select(PWSID,QuestionResults) %>%
+  rename(Other=QuestionResults) %>% distinct(.keep_all=TRUE) %>% mutate(Other="Yes")
+
+subsidies_HowFunded <- subs %>% 
+  filter(QuestionName=="WR LL Funded") %>% 
+  filter(QuestionResults!="-") %>%
+  select(PWSID,QuestionResults) %>%
+  rename(Disabled=QuestionResults) %>% distinct(.keep_all=TRUE) 
+
+subsidies_BenefitForm <- subs %>% 
+  filter(QuestionName=="WR LL Benefit Form") %>% 
+  filter(QuestionResults!="-") %>%
+  select(PWSID,QuestionResults) %>%
+  rename(Disabled=QuestionResults) %>% distinct(.keep_all=TRUE) 
+ 
+
+shutoff_pa<-left_join(b,shutoff_pa,by="PWSID")
+
+subs_b <- b %>% 
+  left_join(subsidies,by="PWSID") %>%
+  left_join(subsidies_LI,by="PWSID") %>%
+  left_join(subsidies_S,by="PWSID") %>%
+  left_join(subsidies_D,by="PWSID") %>%
+  left_join(subsidies_M,by="PWSID") %>%
+  left_join(subsidies_O,by="PWSID") 
+
+subs_b$subsidy[which(subs_b$LowIncome=="Yes" | subs_b$Disabled=="Yes" | subs_b$Other=="Yes" | subs_b$Medical=="Yes" | subs_b$Seniors=="Yes")]<-"Yes"
+subs_b$LowIncome[which(subs_b$subsidy=="No")]<-"No"
+subs_b$Disabled[which(subs_b$subsidy=="No")]<-"No"
+subs_b$Medical[which(subs_b$subsidy=="No")]<-"No"
+subs_b$Seniors[which(subs_b$subsidy=="No")]<-"No"
+subs_b$Other[which(subs_b$subsidy=="No")]<-"No"
+
+subs_b$LowIncome[which(subs_b$subsidy=="Yes" & is.na(subs_b$LowIncome))]<-"No"
+subs_b$Disabled[which(subs_b$subsidy=="Yes" & is.na(subs_b$Disabled))]<-"No"
+subs_b$Medical[which(subs_b$subsidy=="Yes" & is.na(subs_b$Medical))]<-"No"
+subs_b$Seniors[which(subs_b$subsidy=="Yes" & is.na(subs_b$Seniors))]<-"No"
+subs_b$Other[which(subs_b$subsidy=="Yes" & is.na(subs_b$Other))]<-"No"
+
+```
+
+## Census comparison
+
+Look and see if there's any socioeconomic correlations
+
+- Are richer places having higher prices?
+
+```{r richer higher}
+prices <- select(own,
+                 PWSID,
+                 Year,
+                 `Water System Classification`,
+                 `Water System Ownership`,
+                 `WR Type`,
+                 `WR 6 HCF DW Charges`,
+                 `WR 12 HCF DW Charges`) %>% filter(Year==2017 & `WR Type`!="-" & !is.na(`WR Type`))
+prices.income <- inv %>% left_join(prices,by="PWSID") %>% left_join(pws.income2,by="PWSID")
+```
+
+- Are private utiltiies tending to be in richer or poorer places than public utilities?
+
+```{r private richer}
+
+```
+
+If there are socioeconomic correlations, what are the implications for poorer people who are still in more expensive places? Need to review exisintg customer assistance programs/ water bill subsidy programs. 
+
+Having established that private utilities indeed tend to charge more for the same amount of water on average, we can investigate service levels. Is it plausible that the difference is entirely due to profit? Or are there differences in service levels or infrastructure investments being made?
+
+## Infrastructure quality - leakage
+
+One measure of performance quality might be Leakage. A water system with high levels of investment in asset management would be expected to have lower levels of leakage. The CA Water Resources Control Board in 2016 initiated mandatory water audits for most waterr utilities, that calculated, among many other indicators, 3 key leakage factors:
+
+1. The Current Annual Real Losses (CARL) (an estimate of the amount of water physically leaking out of the system. That is, unlike NRW, this figure does not include unauthorized usage, unpaid water, and unmetered but consumed water). 
+2. The Unavoidable Annual Real Losses (UARL) (an estimate of the lowest pracitcable level of leakage possible given the physical layout of the distribution system. All pipes and valves leak to some extent, and some systems naturally leak more than others due to their initial design and the nature of layout of the customer service connections.)
+
+3. The Infrastructure Leakage Index (ILI), which is CARL/UARL. 
+
+Below I compare the distribution of ILIs between public and private utilities where available for each year. It is clear that there is no significant difference in ILI between public and private utilities, so it is not clear if there are any performance gains to be had from privatization on this front. That said, the sample is limited to only 38 of the private utilities due to data reporting issues.
+
+```{r audi, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+audit <- read_csv("Data/audit.csv")
+matches <- regmatches(audit$PWS_ID_OR_OTHER_ID, gregexpr("[[:digit:]]+", audit$PWS_ID_OR_OTHER_ID))
+audit$x<-matches
+audit$y<-audit$x
+audit$y[which(nchar(audit$x)==6)]<-paste0("0",audit$x[which(nchar(audit$x)==6)])
+audit$pwsid<-paste0("CA",audit$y)
+
+a<-select(audit,pwsid,PI_INFRASTRUCT_LEAKAGE_INDEX,REPORTING_YEAR) #%>% group_by(pwsid) %>%summarise(ili=mean(PI_INFRASTRUCT_LEAKAGE_INDEX))
+
+r <- left_join(rates,a,by=c("pwsid"))
+ggplot(r[which(r$hh_sizes==1),], aes(x=as.factor(REPORTING_YEAR), y=PI_INFRASTRUCT_LEAKAGE_INDEX, colour=Ownership)) +
+  geom_boxplot() 
+```
+
+## Safe Drinking Water Act compliance
+
+The Safe Drinking Water Act requires utilities to make a number of water quality tests and also file reports of the results of such tests to USEPA and/or state drinking water regulators. EPA determins on an annual basis whether a utility is a "serious violator", meaning they have some combination of repeated, unresolved major water quality tresting failures for regulated contaminants, or routinely fail to meet reporting requirements. I tabulate the number of years over the last 10 that a system has been in violation, tabulate by year.
+
+Among all the 2,826 systems for which compliance data is available 480 (17%) have been a "serious violator" for at least 1 year over the last decade (2011-2020). 13.6% of public utilities and 25% of private utilities have been serious violators. However, when restricting to the 653 utilities with >3300 service populations, 53 (8%) have been serious violators. Of these larger utilities, 6 of 132 (4.5%) private utilities have been serious violatros while 47 of 468 (10%) of public utilities have been serious violators. 
+
+We must be careful not to interpret this correlation causally. There may be a complex interplay between system size,
+
+```{r wq, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+wq <- st_read("Data/ec_summary_aug2020/EC_Summary_Aug2020.shp")
+wq2<- read_csv("Data/hr2w_web_data_active-6-7-19.csv")
+
+b <- b.x
+v <- read_csv("Data/SDWA_SERIOUS_VIOLATORS.csv")
+v <- v%>% dplyr::select(PWSID,FISCAL_YEAR,SERIOUS_VIOLATOR,STATE) %>% filter(STATE=="CA")
+v$count=1
+v <- v%>%group_by(PWSID)%>%summarize(years_serious_violater=sum(count))
+
+bv<-left_join(b,v,by="PWSID") %>% st_drop_geometry()
+
+bv$years_serious_violater[which(is.na(bv$years_serious_violater))] <-0
+bv$serious_violator_last_decade=(bv$years_serious_violater>0)
+bv$count=1
+bv$Size_gr_3300=(bv$D_POPULATI>3300)
+bv$pop_affected=0
+bv$pop_affected[which(bv$serious_violator_last_decade==TRUE)]<-bv$D_POPULATI[which(bv$serious_violator_last_decade==TRUE)]
+
+k1<-bv%>%group_by(size_cat,Ownership)%>%summarise(utilities=sum(count),serious_violators=sum(serious_violator_last_decade),perc_utilitues=100*serious_violators/utilities,total_population=sum(D_POPULATI), population_affected=sum(pop_affected), perc_pop_affected=100*sum(pop_affected)/sum(D_POPULATI))
+
+k2<-bv%>%group_by(Size_gr_3300,Ownership)%>%summarise(utilities=sum(count),serious_violators=sum(serious_violator_last_decade),perc_utilitues=100*serious_violators/utilities,total_population=sum(D_POPULATI), population_affected=sum(pop_affected), perc_pop_affected=100*sum(pop_affected)/sum(D_POPULATI))
+
+kable(k1,digits=1)
+kable(k2,digits=1)
+
+sd<-lm(serious_violator_last_decade ~ Ownership + log(D_POPULATI),
+  data=filter(bv,D_POPULATI>3300)
+)
+summary(sd)
+
+wealth <- rename(wealth,PWSID=pwsid)
+
+w <- left_join(wealth,select(bv,
+                             PWSID,
+                             years_serious_violater,
+                             serious_violator_last_decade),by="PWSID")
+
+ggplot(data=w,aes(x=`Water System Ownership`,y=total_bill_by_hhsize,fill=serious_violator_last_decade)) + geom_boxplot()
+
+w <- left_join(w,select(subs,PWSID,any),by="PWSID")
+shut_offs$shutoffs[which(shut_offs$`WR SHUT_OFFS Once SF Total` >0 & (shut_offs$`WR SHUT_OFFS Once SF Total`==shut_offs$`WR SHUT_OFFS More Than Once SF Total`))]<-shut_offs$shutoffs[which(shut_offs$`WR SHUT_OFFS Once SF Total` >0 & (shut_offs$`WR SHUT_OFFS Once SF Total`==shut_offs$`WR SHUT_OFFS More Than Once SF Total`))]/2
+
+shut_offs <- filter(shut_offs,Year==2018)
+
+w <- left_join(w,shut_offs,by="PWSID")
+w$shutoffs_perc <- w$shutoffs/as.numeric(w$`T Potable Total`)
+
+wealth_shutoffs<-ggplot(own_ua,
+                   aes(y=Pop/estimate,
+                       x=`50th Percentile`/B19013_001,
+                       color=`Water System Ownership`
+                       )) + 
+                     geom_point() + 
+                     scale_color_brewer(palette="Dark2") + 
+                     theme_minimal() + 
+                     scale_size(range=c(2,15),name="Service Population") + geom_jitter()
+
+
+bill_shutoffs<-ggplot(w,
+                   aes(y=shutoffs_perc,
+                       x=total_bill_by_hhsize,
+                       color=`Water System Ownership`,
+                       size=Pop)) + 
+                     geom_point() + 
+                     scale_color_brewer(palette="Dark2") + 
+                     theme_minimal() + 
+                     scale_size(range=c(2,15),name="Service Population") + geom_jitter()
+
+summary(lm(shutoffs_perc ~ AR20 + log1p(Pop) + `Water System Ownership`,data=w))
+summary(lm(shutoffs_perc ~ AR20 + log1p(Pop) + `Water System Ownership`,data=filter(w,shutoffs_perc>0)))
+
+```
+
+## Infrastructure repair and rehabilitation and replacement costs
+```
+
+
+```

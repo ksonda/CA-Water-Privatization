@@ -1,0 +1,59 @@
+"","GEOID","NAME","variable","estimate","moe"
+"1","06001","Alameda County, California","medincome",85743,940
+"2","06003","Alpine County, California","medincome",63438,4535
+"3","06005","Amador County, California","medincome",60636,2765
+"4","06007","Butte County, California","medincome",46516,1130
+"5","06009","Calaveras County, California","medincome",54800,3529
+"6","06011","Colusa County, California","medincome",56481,4858
+"7","06013","Contra Costa County, California","medincome",88456,822
+"8","06015","Del Norte County, California","medincome",41287,4114
+"9","06017","El Dorado County, California","medincome",74885,2565
+"10","06019","Fresno County, California","medincome",48730,655
+"11","06021","Glenn County, California","medincome",46260,3402
+"12","06023","Humboldt County, California","medincome",43718,1579
+"13","06025","Imperial County, California","medincome",44779,1850
+"14","06027","Inyo County, California","medincome",51500,4578
+"15","06029","Kern County, California","medincome",50826,771
+"16","06031","Kings County, California","medincome",49742,1744
+"17","06033","Lake County, California","medincome",40446,2857
+"18","06035","Lassen County, California","medincome",54083,2927
+"19","06037","Los Angeles County, California","medincome",61015,262
+"20","06039","Madera County, California","medincome",48210,2108
+"21","06041","Marin County, California","medincome",104703,1763
+"22","06043","Mariposa County, California","medincome",51385,3637
+"23","06045","Mendocino County, California","medincome",46528,1787
+"24","06047","Merced County, California","medincome",46338,1301
+"25","06049","Modoc County, California","medincome",39296,4907
+"26","06051","Mono County, California","medincome",60595,6356
+"27","06053","Monterey County, California","medincome",63249,1209
+"28","06055","Napa County, California","medincome",79637,1895
+"29","06057","Nevada County, California","medincome",60610,2262
+"30","06059","Orange County, California","medincome",81851,570
+"31","06061","Placer County, California","medincome",80488,1431
+"32","06063","Plumas County, California","medincome",50266,3476
+"33","06065","Riverside County, California","medincome",60807,429
+"34","06067","Sacramento County, California","medincome",60239,475
+"35","06069","San Benito County, California","medincome",80760,3889
+"36","06071","San Bernardino County, California","medincome",57156,594
+"37","06073","San Diego County, California","medincome",70588,617
+"38","06075","San Francisco County, California","medincome",96265,1349
+"39","06077","San Joaquin County, California","medincome",57813,863
+"40","06079","San Luis Obispo County, California","medincome",67175,1720
+"41","06081","San Mateo County, California","medincome",105667,1195
+"42","06083","Santa Barbara County, California","medincome",68023,1420
+"43","06085","Santa Clara County, California","medincome",106761,858
+"44","06087","Santa Cruz County, California","medincome",73663,1682
+"45","06089","Shasta County, California","medincome",47258,1104
+"46","06091","Sierra County, California","medincome",44190,9650
+"47","06093","Siskiyou County, California","medincome",40884,1957
+"48","06095","Solano County, California","medincome",72950,1244
+"49","06097","Sonoma County, California","medincome",71769,1046
+"50","06099","Stanislaus County, California","medincome",54260,976
+"51","06101","Sutter County, California","medincome",54347,2000
+"52","06103","Tehama County, California","medincome",42512,2803
+"53","06105","Trinity County, California","medincome",36563,5946
+"54","06107","Tulare County, California","medincome",44871,1286
+"55","06109","Tuolumne County, California","medincome",54325,2700
+"56","06111","Ventura County, California","medincome",81972,983
+"57","06113","Yolo County, California","medincome",61621,1733
+"58","06115","Yuba County, California","medincome",51776,2375

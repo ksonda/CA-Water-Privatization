@@ -1,0 +1,126 @@
+#Water billed in cf instead of ccf but prices are adjusted for ccf
+---
+metadata:
+  effective_date: 2017-01-01
+  utility_name: "El Dorado Irrigation District"
+  bill_frequency: bimonthly
+
+rate_structure:
+  RESIDENTIAL_SINGLE:
+    service_charge:
+      depends_on: 
+       - meter_size
+       - meter_type
+      values:
+        5/8"|Turbine     : 59.88
+        5/8"|Displacement      : 59.88
+        3/4"|Turbine     : 59.88
+        3/4"|Displacement      : 59.88
+        1"|Turbine       : 87.69
+        1"|Displacement        : 87.69
+        1 1/2"|Displacement    : 151.33
+        1 1/2"|Turbine   : 179.15
+        2"|Displacement        : 230.82
+        2"|Turbine       : 230.82
+        3"|Displacement        : 466.03
+        3"|Turbine       : 485.29
+        4"|Displacement        : 684.08
+        4"|Turbine       : 855.04
+        6"|Displacement        : 1355.84
+        6"|Turbine       : 1876.84
+        8"|Turbine       : 3215.12
+        8"|Displacement        : 3215.12
+        10"|Turbine      : 5091.96
+        10"|Displacement       : 5091.96
+        12"|Turbine      : 6699.52
+        12"|Displacement       : 6699.52
+    tier_starts:
+      - 0
+      - 18
+      - 45
+    tier_prices:
+      - 1.454
+      - 1.755
+      - 2.059
+    commodity_charge: Tiered
+    bill: service_charge+commodity_charge
+
+  RESIDENTIAL_MULTI:
+    service_charge:
+      depends_on: 
+       - meter_size
+       - meter_type
+      values:
+        5/8"|Turbine     : 62.97
+        5/8"|Displacement      : 62.97
+        3/4"|Turbine     : 62.97
+        3/4"|Displacement      : 62.97
+        1"|Turbine       : 92.97
+        1"|Displacement        : 92.97
+        1 1/2"|Displacement    : 161.56
+        1 1/2"|Turbine   : 191.56
+        2"|Displacement        : 247.28
+        2"|Turbine       : 247.28
+        3"|Displacement        : 478.73
+        3"|Turbine       : 521.59
+        4"|Displacement        : 735.89
+        4"|Turbine       : 920.20
+        6"|Displacement        : 1447.40
+        6"|Turbine       : 1731.92
+        8"|Turbine       : 3449.03
+        8"|Displacement        : 3449.03
+        10"|Turbine      : 5462.39
+        10"|Displacement       : 5462.39
+        12"|Turbine      : 7165.09
+        12"|Displacement       : 7165.09
+    flat_rate: 1.731
+    commodity_charge: flat_rate*usage_ccf
+    bill: commodity_charge+service_charge
+
+  COMMERCIAL:
+    service_charge:
+      depends_on: 
+       - meter_size
+       - meter_type
+      values:
+        5/8"|Turbine     : 62.97
+        5/8"|Displacement      : 62.97
+        3/4"|Turbine     : 62.97
+        3/4"|Displacement      : 62.97
+        1"|Turbine       : 92.97
+        1"|Displacement        : 92.97
+        1 1/2"|Displacement    : 161.56
+        1 1/2"|Turbine   : 191.56
+        2"|Displacement        : 247.28
+        2"|Turbine       : 247.28
+        3"|Displacement        : 478.73
+        3"|Turbine       : 521.59
+        4"|Displacement        : 735.89
+        4"|Turbine       : 920.20
+        6"|Displacement        : 1447.40
+        6"|Turbine       : 1731.92
+        8"|Turbine       : 3449.03
+        8"|Displacement        : 3449.03
+        10"|Turbine      : 5462.39
+        10"|Displacement       : 5462.39
+        12"|Turbine      : 7165.09
+        12"|Displacement       : 7165.09
+    flat_rate: 1.731
+    commodity_charge: flat_rate*usage_ccf
+    bill: commodity_charge+service_charge
+
+  RECLAIMED:
+    service_charge:
+      depends_on: meter_size
+      values:
+        3/4" : 23.84
+    tier_starts:
+      - 0
+      - 30
+      - 45
+    tier_prices:
+      - 0.688
+      - 1.163
+      - 1.751
+    commodity_charge: Tiered
+    bill: commodity_charge+service_charge

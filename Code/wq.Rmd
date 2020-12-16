@@ -1,0 +1,39 @@
+---
+title: "wq"
+output: html_document
+---
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+library(leaflet)
+library(rgdal)
+```
+
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+affected<- readOGR(dsn = "~/Documents/water rate/Water Violation/ec_summary_jun2019/affected.shp", verbose = F, stringsAsFactors = F)
+```
+
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+labels <- sprintf("<strong>Utility Name: %s</strong>
+                   <br/>Violation Frequency: %s",
+                  affected$AGENCYNAME, affected$Freq) %>%
+  lapply(htmltools::HTML)
+
+```
+
+
+```{r echo = FALSE, warning = FALSE}
+pal <- colorBin("YlOrRd", domain = affected$Freq, bins = seq(min(affected$Freq), max(affected$Freq), length.out = 10))
+leaflet(affected, , width = "100%") %>%
+  addProviderTiles("CartoDB.Positron")%>%
+  addPolygons(color = ~pal(Freq),
+              fillOpacity = 0.5,
+              weight = 1,
+              label = labels,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto"),
+              group = "Violation")
+```
+

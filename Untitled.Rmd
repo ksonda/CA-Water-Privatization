@@ -1,0 +1,301 @@
+---
+title: "CA Affordabulity"
+author: "Kyle Onda"
+date: "9/3/2020"
+output:
+  html_document: default
+  word_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidycensus)
+library(sf)
+library(beeswarm)
+library(knitr)
+library(stargazer)
+```
+
+## Data Sources
+
+### Census
+
+### OWRS Rate Information from CA Data Collaborative 
+
+### Service Area Boundaries from CA DWR
+
+### Water Loss Audits from CA DWR
+
+### Electronic Annual Report from CA SWRCB
+
+#### Infrastructure repair costs
+
+#### Cut-offs
+
+#### Customer assistance programs
+
+## Profile of prevalence of private water utilities in CA (c. 2017))
+
+There are ~ 2,800 Community Water Systems (defined as water systems serving at least 15 residential units on a year-round basis, generally applying to all municipal and institutional systems with residential components, but not commercial, school, and recreational facilities). Of these, 97.6% of the population is  served by the 653 systems that serve more than 3,300 people, while only 2.4% of the population is served by 2,173 small systems.
+
+Overall, while 38% of community water systems are privately owned, they are disproportionately small systems, and so they only serve about 18% of the population. 94% of the population served by private utilities are served by utlities with more than 3,300 people. 
+```{r boundaries, echo=FALSE,results='asis',message=FALSE, warning=FALSE}
+b <- st_read("Data/boundaries.geojson") %>% filter(D_PWS_FED_=="C") 
+b$size_cat= NA
+
+b$size_cat[which(b$D_POPULATI<=500)] = "1. Very Small (<500)" 
+b$size_cat[which(b$D_POPULATI>500)] = "2. Small (501-3300)" 
+b$size_cat[which(b$D_POPULATI>3301)] = "3. Medium (3301-10,000)" 
+b$size_cat[which(b$D_POPULATI>10001)] = "4. Large (10,001- 100,000)" 
+b$size_cat[which(b$D_POPULATI>100000)] = "5. Very Large (>100,000)" 
+
+b$Ownership <-"Public"
+b$Ownership[which(b$OWNER_TYPE=="P")]<-"Private"
+
+size_summary <- b %>% group_by(size_cat)%>%add_tally()%>%summarise(count=mean(n),pop=sum(D_POPULATI)/10^6)%>%st_drop_geometry()
+
+size_summary$perc_pop <- 100*size_summary$pop/sum(size_summary$pop)
+size_summary <- arrange(size_summary,size_cat)
+kable(size_summary, caption= "Size and population distribution of CA Water Utilities",digits=1)
+
+private <- b%>%group_by(Ownership)%>%add_tally()%>%summarize(count=mean(n),pop=sum(D_POPULATI)/10^6)%>%st_drop_geometry() %>% ungroup()%>%mutate(perc_pop=100*pop/sum(pop))
+kable(private, caption= "Population served by public and private utilities in CA",digits=1)
+
+size_summary.p <- b %>% group_by(size_cat,Ownership)%>%add_tally()%>%summarise(count=mean(n),pop=sum(D_POPULATI)/10^6)%>%st_drop_geometry()
+
+size_summary.p$perc_pop <- 100*size_summary.p$pop/sum(size_summary.p$pop)
+size_summary.p <- arrange(size_summary.p,size_cat,Ownership)
+kable(size_summary.p, caption= "Size and population distribution and ownership of CA Water Utilities",digits=1)
+
+
+```
+
+## Then parse the water rates
+
+A common concern with private water utilities is that they would abuse their local monopolies and exploit market power to maximize profits and raise prices. It is difficult to ascertain the actual short and long-run costs of water utilities in the United States. It is also difficult to directly compare water prices across utilities, because there are complex rate structures such as increasing and decreasing block rates, seasonally varying rates, and water budget - based rates that vary with consumption levels. Moreover, in many places, the bulk of residential water use is spent on outdoor water uses such as lawn irrigation that are less salient to those concerned about affordability. Here, I use a survey of the rate structures of 387 (of which 79 are privately owned) of the largest CA utilities (comprising 30.5 million people, or 79% of the population served by water utilities in CA) in effect as of 2017 to calculate the average monthly water bill for households sized 1-7, assuming a reasonable water use for domestic purposes at 50 gallons per capita per day, in line with otehr scholars (M Teodoro 20xx, J Mumm 20XX, WHO 2011). 
+
+A  caveat here is that this subset of utilties for the most part represents phenomenon in larger California utilities. Cost structures and dynamics affecting water pricing and privatization in rural areas may differ substantially from those in urban areas. Below, we see that the vast majority of utilities with rates available for analysis have service populations greater than 1,000. 
+
+```{r rates pop,echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+rates <- read_csv("Data/affordability.csv")
+priv <- select(b,PWSID,Ownership,D_POPULATI)
+rates <- left_join(rates,b,by=c("pwsid"="PWSID")) 
+rates <- rates[which(!is.na(rates$Ownership)),]
+ggplot(rates, aes(x=log10(D_POPULATI), fill=Ownership)) +
+  geom_density(alpha=0.4)
+# Add mean lines
+ear13 <- read_tsv("Data/EAR/earsurveyresults_2013ry.zip",col_types="ccdcccdddc")
+ear14 <- read_tsv("Data/EAR/earsurveyresults_2014ry.zip",col_types="ccdcccdddc")
+ear15 <- read_tsv("Data/EAR/earsurveyresults_2015ry.zip",col_types="ccdcccdddc")
+ear16 <- read_tsv("Data/EAR/earsurveyresults_2016ry.zip",col_types="ccdcccdddc")
+ear17 <- read_tsv("Data/EAR/earsurveyresults_2017ry.zip",col_types="ccdcccdddc")
+ear18 <- read_tsv("Data/EAR/earsurveyresults_2018ry.zip",col_types="ccdcccdddc")
+
+ear <- bind_rows(ear13,ear14,ear15,ear16,ear17,ear18)
+rm(ear13,ear14,ear15,ear16,ear17,ear18)
+save(ear,file="Data/EAR/ear.rds")
+ear$QCat<-substr(ear$QuestionName,1,2)
+
+wr <- filter(ear,QCat=="WR")
+
+hcf <- ear %>% 
+  filter(Year==2017 & (QuestionName=='WR 6 HCF DW Charges' |QuestionName=='WR 12 HCF DW Charges' )) %>% 
+  distinct(.keep_all=TRUE) %>%
+  mutate(ConsLevel=QuestionName,
+         MonthlyBill=as.numeric(QuestionResults)) %>%
+  select(PWSID,ConsLevel,MonthlyBill)
+  
+#hcf12 <- filter(ear, QuestionName =="WR 12 HCF DW Charges")
+
+```
+
+
+
+I then compare the monthly water bill (averaged to month for utilities with bimonthly, quarterly, and annual water bill regimes) for housheolds of size 1-7 between public and private utilities. In general, it does indeed seem to be the case that private utilties charge more on average for water than public utilities. Regression results show that on average, private utilties charge between \$3.50 and \$9.50  more per month depending on consumption levels than public utilies. 
+
+```{r rates, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+r <- left_join(b,hcf,by="PWSID")
+wr_types <- wr %>% 
+  filter(QuestionName=="WR Type") %>% 
+  group_by(PWSID) %>% 
+  mutate(maxYear=max(Year)) %>% 
+  ungroup() %>% 
+  filter(Year==maxYear)
+
+no_rates <- wr_types %>% 
+  filter(QuestionResults=="-" | QuestionResults=="N/A") %>% 
+  mutate(rateType=QuestionResults) %>%
+  distinct(PWSID,.keep_all=TRUE) 
+
+has_rates <- filter(wr, QuestionName=="WR Type") %>% distinct(PWSID)
+
+r <- anti_join(r,no_rates,by="PWSID")
+r <- semi_join(r,has_rates,by="PWSID")
+
+
+r$Private <- 0
+r$Private[which(r$Ownership=="Private")]<-1
+r$MonthlyBill[which(r$MonthlyBill>1000)]<-NA
+ggplot(filter(r, MonthlyBill>0), aes(x=as.factor(ConsLevel), y=MonthlyBill, colour=Ownership)) +
+  geom_boxplot() 
+
+mr1<-lm(MonthlyBill~Private,data=r[which(r$ConsLevel=="WR 6 HCF DW Charges" & r$MonthlyBill>0),])
+mr2<-lm(MonthlyBill~Private,data=r[which(r$ConsLevel=="WR 12 HCF DW Charges"& r$MonthlyBill>0),])
+
+mr1.w<-lm(MonthlyBill~Private,data=r[which(r$ConsLevel=="WR 6 HCF DW Charges" & r$MonthlyBill>0),],weights=r$D_POPULATI[which(r$ConsLevel=="WR 6 HCF DW Charges" & r$MonthlyBill>0)])
+mr2.w<-lm(MonthlyBill~Private,data=r[which(r$ConsLevel=="WR 12 HCF DW Charges"& r$MonthlyBill>0),],weights=r$D_POPULATI[which(r$ConsLevel=="WR 12 HCF DW Charges"& r$MonthlyBill>0)])
+
+rates$Private <- 0
+rates$Private[which(rates$Ownership=="Private")]<-1
+ggplot(rates, aes(x=as.factor(hh_sizes), y=total_bill_by_hhsize, colour=Ownership)) +
+  geom_boxplot() 
+
+m1<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==1),])
+m2<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==2),])
+m3<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==3),])
+m4<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==4),])
+m5<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==5),])
+m6<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==6),])
+m7<-lm(total_bill_by_hhsize~Private,data=rates[which(rates$hh_sizes==7),])
+stargazer(m1,m2,m3,m4,m5,m6,m7,type='html')
+
+```
+
+However, might there be more complex patterns? For example, due to economies of scale, it's possible that larger utilities need to charge less for water. There does seem to be a negative correlation between utility size and water charges. Regressions indicate here that in general, across levels of consumption assuming households size 1-7, a doubling in service population is associated with a 5% decrease in monthly water bill (statistically significant <0.001). 
+
+```{r rates by size, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+ggplot(rates, aes(x=log(D_POPULATI+1), y=log(total_bill_by_hhsize), color=as.factor(hh_sizes), shape=as.factor(hh_sizes))) +
+  geom_point() + 
+  geom_smooth(method=lm)
+
+ggplot(filter(rates,hh_sizes==3), aes(x=log(D_POPULATI+1), y=log(total_bill_by_hhsize), color=as.factor(Private), shape=as.factor(Private))) +
+  geom_point()
+
+
+ggplot(filter(r,MonthlyBill>0 & ConsLevel=="WR 6 HCF DW Charges" & D_POPULATI>10000), aes(x=log(D_POPULATI), y=log(MonthlyBill), color=as.factor(Private))) +
+  geom_point() + 
+  geom_smooth(method=lm)
+
+```
+
+Since, we saw above that private utilities tend to be smaller than public ones, we can attempt to control for this. Below, we see that controlling for population size, on average private utilities tend to have 11-16% higher water bills for a given household size at 50gpcd than public utilities. Note that this is an average effect, and that the distributions of water bills do overlap substantially between public and private utilties. In any case, this correlation holds when adding county fixed effects to account for regional clustering factors (such as many of the private utilities being clustered in the Los Angeles area)
+
+```{r size private reg, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+m1<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==1),])
+m2<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==2),])
+m3<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==3),])
+m4<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==4),])
+m5<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==5),])
+m6<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==6),])
+m7<-lm(log(total_bill_by_hhsize)~log(D_POPULATI+1)+Private,data=rates[which(rates$hh_sizes==7),])
+stargazer(m1,m2,m3,m4,m5,m6,m7,type='html')
+
+
+r1<-lm(log(MonthlyBill)~log(D_POPULATI+1)+Private,data=r[which(r$ConsLevel=="WR 6 HCF DW Charges" & r$MonthlyBill>0 & r$D_POPULATI>3300),])
+r2<-lm(log(MonthlyBill)~log(D_POPULATI+1)+Private,data=r[which(r$ConsLevel=="WR 12 HCF DW Charges" & r$MonthlyBill>0 & r$D_POPULATI>3300),])
+
+stargazer(r1,r2,type='html')
+
+
+```
+
+
+
+## Shut-offs
+```{r shutoffs}
+conn <- ear %>% filter(SectionName=="Connections" & Year==2018)
+conn_sfr <- conn %>% filter(QuestionName=="SFR Potable Total" & Year==2018)
+conn_mfr <- conn %>% filter(QuestionName=="MFR Potable Total" & Year==2018)
+conn_total <- conn %>% filter(QuestionName=="T Potable Total" & Year==2018)
+
+shutoffs <- ear %>% filter(substr(QuestionName,1,12)=="WR SHUT_OFFS" & Year==2018)
+
+pws_shutoff_collect <- shutoffs %>% filter(QuestionName=="WR SHUT_OFFS Once No Collect" & is.na(QuestionResults))
+
+shutoffs_SF <- shutoffs %>% filter(QuestionName=="WR SHUT_OFFS Once SF Total") %>% mutate(sf_shutoffs=QuestionResults)%>%select(PWSID,sf_shutoffs) %>%distinct(.keep_all=TRUE)
+shutoffs_MF <- shutoffs %>% filter(QuestionName=="WR SHUT_OFFS Once MF Total") %>% mutate(mf_shutoffs=QuestionResults)%>%select(PWSID,mf_shutoffs)%>%distinct(.keep_all=TRUE)
+shutoffs_total <- pws_shutoff_collect %>% left_join(shutoffs_SF,by="PWSID")  %>% left_join(shutoffs_MF,by="PWSID") %>% mutate(shutoffs_total=as.numeric(sf_shutoffs)+as.numeric(mf_shutoffs)) %>% select(PWSID,shutoffs_total)
+
+shutoff_comments <- shutoffs %>% filter(QuestionName=="WR SHUT_OFFS Comments")
+  
+shutoff_pa<- ear%>%filter(QuestionName=="WR SHUT_OFFS Payment Assistance Total")
+```
+
+## Subsidy/ Cost assistance programs
+
+
+## Census comparison
+
+Look and see if there's any socioeconomic correlations
+
+- Are richer places having higher prices?
+- Are private utiltiies tending to be in richer or poorer places than public utilities?
+
+If there are socioeconomic correlations, what are the implications for poorer people who are still in more expensive places? Need to review exisintg customer assistance programs/ water bill subsidy programs. 
+
+Having established that private utilities indeed tend to charge more for the same amount of water on average, we can investigate service levels. Is it plausible that the difference is entirely due to profit? Or are there differences in service levels or infrastructure investments being made?
+
+## Infrastructure quality - leakage
+
+One measure of performance quality might be Leakage. A water system with high levels of investment in asset management would be expected to have lower levels of leakage. The CA Water Resources Control Board in 2016 initiated mandatory water audits for most waterr utilities, that calculated, among many other indicators, 3 key leakage factors:
+
+1. The Current Annual Real Losses (CARL) (an estimate of the amount of water physically leaking out of the system. That is, unlike NRW, this figure does not include unauthorized usage, unpaid water, and unmetered but consumed water). 
+2. The Unavoidable Annual Real Losses (UARL) (an estimate of the lowest pracitcable level of leakage possible given the physical layout of the distribution system. All pipes and valves leak to some extent, and some systems naturally leak more than others due to their initial design and the nature of layout of the customer service connections.)
+
+3. The Infrastructure Leakage Index (ILI), which is CARL/UARL. 
+
+Below I compare the distribution of ILIs between public and private utilities where available for each year. It is clear that there is no significant difference in ILI between public and private utilities, so it is not clear if there are any performance gains to be had from privatization on this front. That said, the sample is limited to only 38 of the private utilities due to data reporting issues.
+
+```{r audi, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+audit <- read_csv("Data/audit.csv")
+matches <- regmatches(audit$PWS_ID_OR_OTHER_ID, gregexpr("[[:digit:]]+", audit$PWS_ID_OR_OTHER_ID))
+audit$x<-matches
+audit$y<-audit$x
+audit$y[which(nchar(audit$x)==6)]<-paste0("0",audit$x[which(nchar(audit$x)==6)])
+audit$pwsid<-paste0("CA",audit$y)
+
+a<-select(audit,pwsid,PI_INFRASTRUCT_LEAKAGE_INDEX,REPORTING_YEAR) #%>% group_by(pwsid) %>%summarise(ili=mean(PI_INFRASTRUCT_LEAKAGE_INDEX))
+
+r <- left_join(rates,a,by=c("pwsid"))
+ggplot(r[which(r$hh_sizes==1),], aes(x=as.factor(REPORTING_YEAR), y=PI_INFRASTRUCT_LEAKAGE_INDEX, colour=Ownership)) +
+  geom_boxplot() 
+```
+
+## Safe Drinking Water Act compliance
+
+The Safe Drinking Water Act requires utilities to make a number of water quality tests and also file reports of the results of such tests to USEPA and/or state drinking water regulators. EPA determins on an annual basis whether a utility is a "serious violator", meaning they have some combination of repeated, unresolved major water quality tresting failures for regulated contaminants, or routinely fail to meet reporting requirements. I tabulate the number of years over the last 10 that a system has been in violation, tabulate by year.
+
+Among all the 2,826 systems for which compliance data is available 480 (17%) have been a "serious violator" for at least 1 year over the last decade (2011-2020). 13.6% of public utilities and 25% of private utilities have been serious violators. However, when restricting to the 653 utilities with >3300 service populations, 53 (8%) have been serious violators. Of these larger utilities, 6 of 132 (4.5%) private utilities have been serious violatros while 47 of 468 (10%) of public utilities have been serious violators. 
+
+We must be careful not to interpret this correlation causally. There may be a complex interplay between system size,
+
+```{r wq, echo=FALSE, include=TRUE, message=FALSE,warning=FALSE, results='asis'}
+wq <- st_read("Data/ec_summary_aug2020/EC_Summary_Aug2020.shp")
+wq2<- read_csv("Data/hr2w_web_data_active-6-7-19.csv")
+v <- read_csv("Data/SDWA_SERIOUS_VIOLATORS.csv")
+v <- v%>% dplyr::select(PWSID,FISCAL_YEAR,SERIOUS_VIOLATOR,STATE) %>% filter(STATE=="CA")
+v$count=1
+v <- v%>%group_by(PWSID)%>%summarize(years_serious_violater=sum(count))
+
+bv<-left_join(b,v,by="PWSID") %>% st_drop_geometry()
+
+bv$years_serious_violater[which(is.na(bv$years_serious_violater))] <-0
+bv$serious_violator_last_decade=(bv$years_serious_violater>0)
+bv$count=1
+bv$Size_gr_3300=(bv$D_POPULATI>3300)
+bv$pop_affected=0
+bv$pop_affected[which(bv$serious_violator_last_decade==TRUE)]<-bv$D_POPULATI[which(bv$serious_violator_last_decade==TRUE)]
+
+k1<-bv%>%group_by(size_cat,Ownership)%>%summarise(utilities=sum(count),serious_violators=sum(serious_violator_last_decade),perc_utilitues=100*serious_violators/utilities,total_population=sum(D_POPULATI), population_affected=sum(pop_affected), perc_pop_affected=100*sum(pop_affected)/sum(D_POPULATI))
+
+k2<-bv%>%group_by(Size_gr_3300,Ownership)%>%summarise(utilities=sum(count),serious_violators=sum(serious_violator_last_decade),perc_utilitues=100*serious_violators/utilities,total_population=sum(D_POPULATI), population_affected=sum(pop_affected), perc_pop_affected=100*sum(pop_affected)/sum(D_POPULATI))
+
+kable(k1,digits=1)
+kable(k2,digits=1)
+
+
+
+```
+
+## Infrastructure repair and rehabilitation and replacement costs
+

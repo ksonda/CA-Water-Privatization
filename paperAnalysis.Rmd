@@ -1,0 +1,60 @@
+---
+title: "PaperAnalysis"
+author: "Kyle Onda"
+date: "10/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+load("paper.rds")
+library(tidyverse)
+library(tidycensus)
+library(sf)
+library(beeswarm)
+library(knitr)
+library(stargazer)
+library(readxl)
+```
+
+# Income and relative size
+
+
+
+```{r pressure, echo=FALSE, resutls="asis}
+w <- wealth %>% group_by(pwsid) %>% mutate(maxYear=max(Year.y)) %>%ungroup() %>% filter(Year.y==maxYear)
+w <- w %>% rename(PWSID=pwsid)
+pops <- own_ua%>%
+  st_drop_geometry() %>%
+  select(PWSID,B01003_001) %>%
+  group_by(PWSID) %>% 
+  mutate(maxPop=sum(B01003_001,na.rm=TRUE)) %>%
+  distinct(PWSID,maxPop)
+
+meds <- own_ua%>% st_drop_geometry() %>% select(PWSID,B19013_001)
+w <- left_join(w,pops,by="PWSID")
+
+w <- left_join(w,meds,by="PWSID")
+w <- w %>% filter((is.na(maxPop) & is.na(B19013_001)) | (!is.na(maxPop) & !is.na(B19013_001)))
+
+w$inc_diff <- w$`50th Percentile`-w$B19013_001
+w$Pop_Prop=w$Pop/w$maxPop
+
+a <- a%>%group_by(pwsid)%>%summarise(ILI=max(PI_INFRASTRUCT_LEAKAGE_INDEX))
+
+w <- left_join(w,a,by=c("PWSID"="pwsid"))
+w2 <- filter(w,maxPop==12563660)
+
+ggplot(w,aes(`50th Percentile`,log(ILI), color=`Water System Ownership`, size=Pop)) + geom_point()
+
+ggplot(w,aes(`50th Percentile`,log(ILI), color=`Water System Ownership`, size=Pop)) + geom_point()
+
+ggplot(w,aes(AR20,shutoffs_perc, color=`Water System Ownership`, size=Pop)) + geom_point()
+
+ggplot(w,aes(`Water System Ownership`,`50th Percentile`)) + geom_boxplot()
+
+summary(lm(shutoffs_perc~as.factor(`Water System Ownership`) + AR20,data=w))
+summary(lm(`50th Percentile`/B19013_001~as.factor(`Water System Ownership`),data=w))
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
