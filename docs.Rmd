@@ -1,0 +1,83 @@
+---
+title: "Untitled"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidycensus)
+library(sf)
+library(beeswarm)
+library(knitr)
+library(stargazer)
+library(readxl)
+```
+
+# Data Preperation
+
+## Find utilities by ownership type
+
+This is the inventory of all utilities that fill out the EAR
+```{r inventory}
+inv <- read_excel("Data/EAR/inventory.xlsx",
+                  sheet = "SDWISWaterSystemInventory071620") %>% filter(WaterSystemType=="C")
+```
+
+Now we need to categorize them all by ownership type. To Recover owenership type, we read in the latest EAR
+```{r type}
+ear13 <- read_tsv("Data/EAR/earsurveyresults_2013ry.zip",col_types="ccdcccdddc")
+ ear14 <- read_tsv("Data/EAR/earsurveyresults_2014ry.zip",col_types="ccdcccdddc")
+ ear15 <- read_tsv("Data/EAR/earsurveyresults_2015ry.zip",col_types="ccdcccdddc")
+ ear16 <- read_tsv("Data/EAR/earsurveyresults_2016ry.zip",col_types="ccdcccdddc")
+ ear17 <- read_tsv("Data/EAR/earsurveyresults_2017ry.zip",col_types="ccdcccdddc")
+ ear18 <- read_tsv("Data/EAR/earsurveyresults_2018ry.zip",col_types="ccdcccdddc")
+ ear19 <- read_tsv("Data/EAR/earsurveyresults_2019ry.zip",col_names=c("PWSID",
+                                                                      "Survey",
+                                                                      "Year",
+                                                                      "SectionName",
+                                                                      "QuestionName",
+                                                                      "QuestionResults",
+                                                                      "SurveyID",
+                                                                      "SectionID",
+                                                                      "QuestionID",
+                                                                      "Pk"), col_types="ccdcccdddc")
+ear <- bind_rows(ear13,ear14,ear15,ear16,ear17,ear18,ear19)
+ownership <- ear %>% 
+  dplyr::filter(QuestionName %in% c("Water System Ownership",
+                                    "IsWholesaler")) %>% 
+  select(PWSID, 
+         Year, 
+         QuestionName, 
+         QuestionResults,
+         QuestionID,
+         Pk) %>% 
+  pivot_wider(id_cols = c(PWSID, Year),
+              names_from = c(QuestionName),
+              values_from = QuestionResults,
+              names_repair="unique",
+              values_fn= length) %>%
+  group_by(PWSID) %>%
+  mutate(maxYear = max(Year)) %>%
+  ungroup()
+
+```
+
+Now we categorize all utilities in the SDWIS Inventory by type
+```{r merge_type}
+inv <- left_join(inv,ownership, by="PWSID")
+```
+
+```{r, include=FALSE}
+ 
+ ear19 <- read_tsv("Data/EAR/earsurveyresults_2019ry.zip",col_types="ccdcccdddc")
+ 
+ ear <- bind_rows(ear13,ear14,ear15,ear16,ear17,ear18,ear19)
+ rm(ear13,ear14,ear15,ear16,ear17,ear18,ear19)
+ save(ear,file="Data/EAR/ear.rds")
+#load("Data/EAR/ear.rds")
+```
+
+# Descriptive Statistics and Plots
+
+# Regression
