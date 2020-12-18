@@ -22,8 +22,18 @@ This is the inventory of all utilities that fill out the EAR
 ```{r inventory}
 inv <- read_excel("Data/EAR/inventory.xlsx",
                   sheet = "SDWISWaterSystemInventory071620") %>% filter(WaterSystemType=="C")
+
+bounds <- sf::read_sf("https://opendata.arcgis.com/datasets/fbba842bf134497c9d611ad506ec48cc_0.geojson")
+rates <- readr::read_csv("Data/OWRS/summary_table_cleanedv2.csv")
 ```
 
+We have to correct the rates data PWSIDs
+
+```{r correct rates pwsis}
+o <- dplyr::distinct(rates,pwsid,utility_name)
+b <- dplyr::select(bounds,PWSID,NAME)
+o <- dplyr::left_join(o,b,by=c("pwsid"="PWSID"))
+```
 Now we need to categorize them all by ownership type. To Recover owenership type, we read in the latest EAR
 ```{r type}
 ear13 <- read_tsv("Data/EAR/earsurveyresults_2013ry.zip",col_types="ccdcccdddc")
