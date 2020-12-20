@@ -12,6 +12,7 @@ library(beeswarm)
 library(knitr)
 library(stargazer)
 library(readxl)
+library(mapview)
 ```
 
 # Data Preperation
@@ -24,37 +25,115 @@ inv <- read_excel("Data/EAR/inventory.xlsx",
                   sheet = "SDWISWaterSystemInventory071620") %>% filter(WaterSystemType=="C")
 
 bounds <- sf::read_sf("https://opendata.arcgis.com/datasets/fbba842bf134497c9d611ad506ec48cc_0.geojson")
-rates <- readr::read_csv("Data/OWRS/summary_table_cleanedv2.csv")
 ```
 
 We have to correct the rates data PWSIDs
+```{r corrections}
+rates <- readr::read_csv("Data/OWRS/summary_table_cleanedv2.csv")
+corr <- read_csv("Data/OWRS/correction.csv")
+rates <- left_join(rates,corr,by=c("utility_name"))
+rates$pwsid.y <- NULL
+rates <- rename(rates,pwsid=pwsid.x)
+rates$pwsid[which(!is.na(rates$`corrected rates PWSID`))] <- rates$`corrected rates PWSID`[which(!is.na(rates$`corrected rates PWSID`))]
+```
+
+Now have to correct rate tier prices
 
 ```{r correct rates pwsis}
-o <- dplyr::distinct(rates,pwsid,utility_name)
-b <- dplyr::select(bounds,PWSID,NAME)
-o <- dplyr::left_join(o,b,by=c("pwsid"="PWSID"))
+# merge in original bill units
+original_units <- read_csv("Data/OWRS/summary_table.csv") %>% select(utility_name,bill_unit) 
+rates <- left_join(rates,original_units,by="utility_name") 
+#recalculate tier prices that were converted from ccf to kg with appropriate conversion factor dividing by 0.748052kgal/ccf to convert back to $/ccf, and then again to convert  to $/kgal. Original calculation was in a wrong unit of $/(ccf/0.748)
+rates$Tier_price[which(rates$bill_unit.y=="ccf")]<-rates$Tier_price[which(rates$bill_unit.y=="ccf")]/(0.748052^2)
 ```
-Now we need to categorize them all by ownership type. To Recover owenership type, we read in the latest EAR
+## Create Billing data
+Now calculate prep to calculate water bills
+```{r calculate bills}
+# set values for non-discretionary water use
+gpcd <- 50
+days_month <- 365/12
+hh_cons_person <- gpcd*days_month
+
+#expand grid of all combinations of utility and household size (1-7)
+names <- c(unique(rates$utility_name))
+hhsize <- c(1:7)
+hhsize <- expand.grid(hhsize,names)
+names(hhsize) <- c("hhsize","utility_name")
+hhsize$utility_name <- as.character(hhsize$utility_name)
+
+#join to main table
+rates <- left_join(rates,hhsize,by="utility_name")
+rates$consumption <- (rates$hhsize * hh_cons_person)/1000
+```
+
+write function to calculate water bills
+```{r bill_calculate}
+
+rates <- arrange(rates,pwsid,utility_name,hhsize,Tier_number)
+rates$Tier_volume[which(!is.na(rates$Tier_price) & is.na(rates$Tier_volume))] <- 10^10
+
+rates <- rates %>% 
+  group_by(utility_name,hhsize) %>%
+  mutate(next_tier_volume = lead(Tier_volume),
+         prev_tier_volume = case_when(
+           Tier_number == 1 ~ 0,
+           Tier_number > 1 ~ lag(Tier_volume)
+         ),
+         Tier_width = case_when(
+           Tier_number == 1 & !is.na(next_tier_volume) ~ Tier_volume,
+           Tier_number >1 ~ Tier_volume - prev_tier_volume,
+           is.na(next_tier_volume) ~ 10^10,
+           ),
+         vol_in_tier = case_when(
+           bill_type == "Uniform" & Tier_number ==1 ~ consumption,
+           consumption <= prev_tier_volume ~ 0,
+           consumption > Tier_volume ~ Tier_width,
+           consumption > prev_tier_volume & consumption <= Tier_volume ~ consumption - prev_tier_volume#,
+          # consumption > Tier_volume ~ Tier_width,
+           #consumption >= Tier_volume & is.na(next_tier_volume) ~ consumption - Tier_volume#,
+           #consumption >= Tier_volume & is.na(next_tier_volume) ~ consumption - Tier_volume
+         )
+  ) 
+
+rates$vol_revenue <- NA
+rates$vol_revenue = rates$Tier_price * rates$vol_in_tier
+
+rates$vol_revenue[which(rates$bill_type=="1.49*usage_ccf")] <- 1.49*rates$consumption[which(rates$bill_type=="1.49*usage_ccf")]*0.748052
+rates$vol_revenue[which(rates$bill_type=="3.04*usage_ccf*1.333")] <- 3.04*rates$consumption[which(rates$bill_type=="3.04*usage_ccf*1.333")]*1.333*0.748052
+
+bills <- rates %>% group_by(pwsid,
+                            utility_name,
+                            bill_type,
+                            hhsize,
+                            consumption,
+                            service_charge) %>%
+  summarise(volumetric_charge = sum(vol_revenue,na.rm=TRUE))
+
+bills$bill <- bills$service_charge + bills$volumetric_charge
+
+```
+Now we need to categorize them all by ownership type. To Recover ownership type, we read in the latest EAR
 ```{r type}
-ear13 <- read_tsv("Data/EAR/earsurveyresults_2013ry.zip",col_types="ccdcccdddc")
- ear14 <- read_tsv("Data/EAR/earsurveyresults_2014ry.zip",col_types="ccdcccdddc")
- ear15 <- read_tsv("Data/EAR/earsurveyresults_2015ry.zip",col_types="ccdcccdddc")
- ear16 <- read_tsv("Data/EAR/earsurveyresults_2016ry.zip",col_types="ccdcccdddc")
- ear17 <- read_tsv("Data/EAR/earsurveyresults_2017ry.zip",col_types="ccdcccdddc")
- ear18 <- read_tsv("Data/EAR/earsurveyresults_2018ry.zip",col_types="ccdcccdddc")
- ear19 <- read_tsv("Data/EAR/earsurveyresults_2019ry.zip",col_names=c("PWSID",
-                                                                      "Survey",
-                                                                      "Year",
-                                                                      "SectionName",
-                                                                      "QuestionName",
-                                                                      "QuestionResults",
-                                                                      "SurveyID",
-                                                                      "SectionID",
-                                                                      "QuestionID",
-                                                                      "Pk"), col_types="ccdcccdddc")
-ear <- bind_rows(ear13,ear14,ear15,ear16,ear17,ear18,ear19)
-ownership <- ear %>% 
-  dplyr::filter(QuestionName %in% c("Water System Ownership",
+# ear13 <- read_tsv("Data/EAR/earsurveyresults_2013ry.zip",col_types="ccdcccdddc")
+#  ear14 <- read_tsv("Data/EAR/earsurveyresults_2014ry.zip",col_types="ccdcccdddc")
+#  ear15 <- read_tsv("Data/EAR/earsurveyresults_2015ry.zip",col_types="ccdcccdddc")
+#  ear16 <- read_tsv("Data/EAR/earsurveyresults_2016ry.zip",col_types="ccdcccdddc")
+#  ear17 <- read_tsv("Data/EAR/earsurveyresults_2017ry.zip",col_types="ccdcccdddc")
+#  ear18 <- read_tsv("Data/EAR/earsurveyresults_2018ry.zip",col_types="ccdcccdddc")
+#  ear19 <- read_tsv("Data/EAR/earsurveyresults_2019ry.zip",col_names=c("PWSID",
+#                                                                       "Survey",
+#                                                                       "Year",
+#                                                                       "SectionName",
+#                                                                       "QuestionName",
+#                                                                       "QuestionResults",
+#                                                                       "SurveyID",
+#                                                                       "SectionID",
+#                                                                       "QuestionID",
+#                                                                       "Pk"), col_types="ccdcccdddc")
+# ear <- bind_rows(ear13,ear14,ear15,ear16,ear17,ear18,ear19)
+# save(ear,file="Data/ear.rds")
+load("Data/ear.rds")
+ownership <- ear %>% filter(QuestionName %in% c("Water System Ownership",
                                     "IsWholesaler")) %>% 
   select(PWSID, 
          Year, 
@@ -63,19 +142,145 @@ ownership <- ear %>%
          QuestionID,
          Pk) %>% 
   pivot_wider(id_cols = c(PWSID, Year),
-              names_from = c(QuestionName),
+              names_from = QuestionName,
               values_from = QuestionResults,
-              names_repair="unique",
-              values_fn= length) %>%
+              names_repair="unique") %>% unnest(cols=c("Water System Ownership","IsWholesaler") ) %>%
   group_by(PWSID) %>%
   mutate(maxYear = max(Year)) %>%
-  ungroup()
+  ungroup() %>%
+  filter(`Water System Ownership` %in% c(
+    "Privately owned business (non-community)",
+    "Privately owned Mutual Water Company or Association",
+    "Privately owned, non-PUC-regulated (Community Water System)",
+    "Local Government",
+    "Privately owned, PUC-regulated, for profit water company"
+    
+  )) 
+
+```
+## Census data
+
+Get all the variables
+```{r census_cars}
+census_api_key("b25f8b1b7bf10561c9cbc3a20a4d2572677f1f05")
+options(tigris_use_cache = TRUE)
+vars <- load_variables(2019, "acs5", cache = TRUE)
+census_vars2 <- c(median_income="B19013_001",
+                 pop_in_hh_with_income_assistance="B09010_002",
+                 pop_in_hh_with_no_income_assistance="B09010_008",
+                 hh_inc_5k="B19001_002",
+                 hh_inc_12.5k="B19001_003",
+                 hh_inc_17.5k="B19001_004",
+                 hh_inc_22.5k="B19001_005",
+                 hh_inc_27.5k="B19001_006",
+                 hh_inc_32.5k="B19001_007",
+                 hh_inc_37.5k="B19001_008",
+                 hh_inc_42.5k="B19001_009",
+                 hh_inc_47.5k="B19001_010",
+                 hh_inc_55k="B19001_011",
+                 hh_inc_67.5k="B19001_012",
+                 hh_inc_87.5k="B19001_013",
+                 hh_inc_112.5k="B19001_014",
+                 hh_inc_137.5k="B19001_015",
+                 hh_inc_175k="B19001_016",
+                 hh_inc_gr200k="B19001_017",
+                 hh_income_count = "B19001_001")
 
 ```
 
+Lets get all the Municipal boundaries
+```{r}
+st <- get_acs(year=2019,geography = "state",
+                  variables = "B01003_001", geometry = TRUE) %>% filter(NAME=="California")
+pl <- get_acs(year=2019,geography = "place",
+                  variables = "B01003_001", geometry = TRUE, state= "CA") 
+
+vars <- load_variables(2019, "acs5", cache = TRUE)
+```
+
+Let's get all the Census Block Groups
+```{r}
+bg <- get_acs(year=2019,geography = "block group",
+                  variables = census_vars2, geometry = TRUE, state= "CA") 
+save(bg, file="Data/census_blockgroups.rds")
+```
+
+Let's get all the Urbanized Areas and combine them into super areas.
+```{r}
+ua <- get_acs(year=2019,geography = "urban area",
+                  variables = c("B01003_001","B19013_001"), geometry = TRUE, output="wide")
+ua<-rename(ua,Pop=B01003_001E)
+ua <- ua[st,]
+ua2 <- st_as_sf(rgeos::gUnaryUnion(as_Spatial(ua)))
+ua2 <- select(ua,Pop)
+ua3 <- st_union(ua)
+ua4 <- aggregate(ua2,ua3,FUN=sum, join=st_intersects)
+```
+
+## Descriptive stats
 Now we categorize all utilities in the SDWIS Inventory by type
 ```{r merge_type}
-inv <- left_join(inv,ownership, by="PWSID")
+own <- ownership %>% group_by(PWSID,`Water System Ownership`) %>% add_tally() %>% ungroup() %>% group_by(PWSID) %>% add_tally() %>% ungroup()
+own1 <- filter(own,n == nn)
+own1 <- distinct(own,PWSID,.keep_all=TRUE)
+own2 <- filter(own, n != nn)
+own2 <- own2 %>% 
+  distinct(PWSID, `Water System Ownership`, .keep_all=TRUE) %>%
+  group_by(PWSID) %>%
+  mutate(maxYear = max(Year)) %>%
+  ungroup() %>%
+  filter(Year==maxYear) %>% 
+  group_by(PWSID) %>%
+  add_tally()
+
+own1 <- select(own1, PWSID, `Water System Ownership`,Year)
+own2 <- select(own2, PWSID, `Water System Ownership`,Year)
+own <- bind_rows(own1,own2)
+own <- own %>% group_by(PWSID) %>% mutate(maxYear=max(Year)) %>% ungroup() %>% filter(Year == maxYear)
+
+rm(own1,own2)
+
+
+d <- left_join(inv,own, by="PWSID")
+d <- select(d, PWSID, PWS_Name, County, Pop, ServConn, `Water System Ownership`)
+d$log10PopCat <- floor(log10(d$Pop))
+
+```
+
+## some distributive plots
+```{r, results='asis'}
+d <- filter(d,`Water System Ownership` != "Privately owned business (non-community)")
+x <- data.frame(table(d$log10PopCat,d$`Water System Ownership`))
+x <- x%>%pivot_wider(id_cols = Var1,names_from = Var2, values_from=Freq)
+
+datatable(x,extensions="Buttons",options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv')))
+
+
+
+y <- d %>% 
+  mutate(TotPop = sum(Pop,na.rm=TRUE),
+         PropPop = Pop/TotPop) %>%
+  group_by(log10PopCat,`Water System Ownership`) %>% 
+  summarise(Population = sum(Pop,na.rm=TRUE),
+            Pop_percent = 100*sum(PropPop,na.rm=TRUE)) %>%
+  pivot_wider(id_cols = `log10PopCat`, 
+              names_from = `Water System Ownership`,
+              values_from = c(Population,Pop_percent))
+
+datatable(y,extensions="Buttons",options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv')))
+
+p<- ggplot(d, aes(x=log10(Pop), color=`Water System Ownership`)) +
+  geom_density() + 
+  scale_color_viridis_d() + 
+  theme_dark() + 
+  theme(legend.position=c(0.69, 0.85)) +
+  xlab("log(base 10) of Service Population")
+
+p
 ```
 
 ```{r, include=FALSE}
@@ -87,6 +292,8 @@ inv <- left_join(inv,ownership, by="PWSID")
  save(ear,file="Data/EAR/ear.rds")
 #load("Data/EAR/ear.rds")
 ```
+
+
 
 # Descriptive Statistics and Plots
 
