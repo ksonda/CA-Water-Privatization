@@ -315,7 +315,12 @@ bkfield <- st_transform(bkfield,4326)
 bkfield <- bg.bounds[bkfield,]
 
 bk.bound <- d.b[st_bbox(bkfield),]
-mapview(bkfield,zcol="median_income",layer.name="Census Block Group - Median HH Income") + mapview(d.b, alpha=1, layer.name = "Water System Boundaries", stroke=TRUE,color="black",col.regions="black", alpha.regions=0, lwd=4)
+m2<-mapview(bkfield,zcol="median_income",layer.name="Census Block Group - Median HH Income") + mapview(bk.bound, alpha=1, layer.name = "Water System Boundaries", stroke=TRUE,color="black",col.regions="black", alpha.regions=0, lwd=4)
+mapshot(m2,"Figures/Map2.html")
+```
+
+Calculate affordability
+```{r calcualte affordability}
 
 pws.income <- bg.bounds %>% st_drop_geometry() %>%
   left_join(bg,by="GEOID") %>%
