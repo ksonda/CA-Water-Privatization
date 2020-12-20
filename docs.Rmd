@@ -288,9 +288,13 @@ b <- bounds %>% select(PWSID)
 d.b <- d %>% inner_join(b,by="PWSID") %>% st_as_sf()
 pal <- magma(n = length(unique(pl$NAME)), direction = -1)
 
+bkfield <- st_transform(filter(ua,GEOID=="04681"),4326)
+d1 <- d.b[bkfield,,op=st_intersects]
+pl1 <- st_transform(pl,4326)[bkfield,,op=st_intersects]
 
-mapview(d.b,zcol="Water System Ownership", alpha=0.8, layer.name = "Water System Boundaries") +
-  mapview(pl, stroke=TRUE,zcol="NAME", color="red", alpha.regions=0, layer.name = "Municipal Boundaries",lwd=2)
+m <- mapview(d1,zcol="Water System Ownership", alpha=0.8, layer.name = "Water System Boundaries") +
+  mapview(pl1, stroke=TRUE,zcol="NAME", color="red", alpha.regions=0, layer.name = "Municipal Boundaries",lwd=2,legend=FALSE)
+mapshot(m,"Figures/Map1.html")
 
 d.x <- st_buffer(st_transform(d.b,3310),dist=0)
 
