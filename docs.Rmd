@@ -273,14 +273,121 @@ datatable(y,extensions="Buttons",options = list(
     dom = 'Bfrtip',
     buttons = c('copy', 'csv')))
 
-p<- ggplot(d, aes(x=log10(Pop), color=`Water System Ownership`)) +
-  geom_density() + 
+p<- ggplot(d, aes(x=log10(Pop), color=`Water System Ownership`), size=4) +
+  geom_density(lwd=2) + 
   scale_color_viridis_d() + 
   theme_dark() + 
   theme(legend.position=c(0.69, 0.85)) +
   xlab("log(base 10) of Service Population")
 
 p
+```
+Spatial demonstration figure. Show utility boundaries, municipal boundaries, and censusblock groups
+```{r}
+b <- bounds %>% select(PWSID) 
+d.b <- d %>% inner_join(b,by="PWSID") %>% st_as_sf()
+pal <- magma(n = length(unique(pl$NAME)), direction = -1)
+
+
+mapview(d.b,zcol="Water System Ownership", alpha=0.8, layer.name = "Water System Boundaries") +
+  mapview(pl, stroke=TRUE,zcol="NAME", color="red", alpha.regions=0, layer.name = "Municipal Boundaries",lwd=2)
+
+d.x <- st_buffer(st_transform(d.b,3310),dist=0)
+
+```
+```{r, include=FALSE}
+
+bg.x <- bg %>% filter(variable=="median_income") %>%
+  select(GEOID,NAME,estimate,geometry) %>% rename(median_income = estimate) %>%
+  st_transform(3310) %>%
+  st_buffer(dist=0) %>%
+  mutate(AreaBlockGroup = st_area(.))
+
+
+bg.bounds <- st_intersection(d.x,bg.x) 
+```
+
+Bakersfield example 
+```{r example, results="asis}
+bkfield <- filter(ua,GEOID=="04681")
+bg.bounds <- st_transform(bg.bounds,4326)
+bkfield <- st_transform(bkfield,4326)
+bkfield <- bg.bounds[bkfield,]
+
+bk.bound <- d.b[st_bbox(bkfield),]
+mapview(bkfield,zcol="median_income",layer.name="Census Block Group - Median HH Income") + mapview(d.b, alpha=1, layer.name = "Water System Boundaries", stroke=TRUE,color="black",col.regions="black", alpha.regions=0, lwd=4)
+
+pws.income <- bg.bounds %>% st_drop_geometry() %>%
+  left_join(bg,by="GEOID") %>%
+  filter(variable %in% c('hh_inc_5k',
+                 'hh_inc_12.5k',
+                 'hh_inc_17.5k',
+                 'hh_inc_22.5k',
+                 'hh_inc_27.5k',
+                 'hh_inc_32.5k',
+                 'hh_inc_37.5k',
+                 'hh_inc_42.5k',
+                 'hh_inc_47.5k',
+                 'hh_inc_55k',
+                 'hh_inc_67.5k',
+                 'hh_inc_87.5k',
+                 'hh_inc_112.5k',
+                 'hh_inc_137.5k',
+                 'hh_inc_175k',
+                 'hh_inc_gr200k')) %>%
+  group_by(PWSID,variable) %>%
+  summarise(estimate=sum(estimate*Percent_BlockGroupinPWS)) %>% 
+  ungroup() %>%
+  mutate(var2=case_when(variable=="hh_inc_5k" ~ 1,
+                 variable=="hh_inc_12.5k" ~ 2,
+                 variable=="hh_inc_17.5k" ~ 3,
+                 variable=="hh_inc_22.5k" ~ 4,
+                 variable=="hh_inc_27.5k" ~ 5,
+                 variable=="hh_inc_32.5k" ~ 6,
+                 variable=="hh_inc_37.5k" ~ 7,
+                 variable=="hh_inc_42.5k" ~ 8,
+                 variable=="hh_inc_47.5k" ~ 9,
+                 variable=="hh_inc_55k" ~ 10,
+                 variable=="hh_inc_67.5k" ~ 11,
+                 variable=="hh_inc_87.5k" ~ 12,
+                 variable=="hh_inc_112.5k" ~ 13,
+                 variable=="hh_inc_137.5k" ~ 14,
+                 variable=="hh_inc_175k" ~ 15,
+                 variable=="hh_inc_gr200k" ~ 16,)) %>% 
+  arrange(PWSID,var2) %>% 
+  group_by(PWSID) %>%
+  mutate(cum_inc_sum = cumsum(estimate),
+         percentile_inc = 100*cum_inc_sum/sum(estimate)) %>%
+  ungroup() %>%
+  mutate(perc_dist20=abs(as.numeric(percentile_inc)-20),
+         perc_dist50=abs(as.numeric(percentile_inc)-50)) %>%
+  group_by(PWSID) %>%
+  filter(perc_dist20==min(perc_dist20) | 
+         perc_dist50==min(perc_dist50)) %>%
+  mutate(percentile=case_when(var2==min(var2)~"20th Percentile",
+                              var2==max(var2)~"50th Percentile"),
+         income_perc=case_when(var2==1 ~ 5000,
+                               var2==2 ~ 12500,
+                               var2==3 ~ 17500,
+                               var2==4 ~ 22500,
+                               var2==5 ~ 27500,
+                               var2==6 ~ 32500,
+                               var2==7 ~ 37500,
+                               var2==8 ~ 42500,
+                               var2==9 ~ 47500,
+                               var2==10 ~ 55000,
+                               var2==11 ~ 67500,
+                               var2==12 ~ 87500,
+                               var2==13 ~ 112500,
+                               var2==14 ~ 137500,
+                               var2==15 ~ 175000,
+                               var2==16 ~ 225000)
+         ) %>%
+  pivot_wider(id_cols=PWSID,names_from=percentile,values_from=income_perc)
+  
+pws.income2 <-unnest(pws.income, cols = c(`20th Percentile`, `50th Percentile`, `NA`)) %>%
+  select(PWSID,`20th Percentile`,`50th Percentile`) %>% distinct(.keep_all=TRUE)
+
 ```
 
 ```{r, include=FALSE}
