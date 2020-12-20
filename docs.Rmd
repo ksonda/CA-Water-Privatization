@@ -318,7 +318,8 @@ bg.bounds <- st_transform(bg.bounds,4326)
 bkfield <- st_transform(bkfield,4326)
 bkfield <- bg.bounds[bkfield,]
 
-bk.bound <- d.b[st_bbox(bkfield),]
+bk.bound <- d.b[bkfield,,op=st_intersects]
+
 m2<-mapview(bkfield,zcol="median_income",layer.name="Census Block Group - Median HH Income") + mapview(bk.bound, alpha=1, layer.name = "Water System Boundaries", stroke=TRUE,color="black",col.regions="black", alpha.regions=0, lwd=4)
 mapshot(m2,"Figures/Map2.html")
 ```
