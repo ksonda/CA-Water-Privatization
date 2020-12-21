@@ -444,13 +444,18 @@ inc <- left_join(pws.income2,d.ua,by="PWSID")
 #   scale_x_log10() + scale_y_log10() + scale_color_viridis_d(labels = function(x) str_wrap(x, width=13)) + theme_dark() +
 #   xlab("Population of Urbanized Area") + ylab("Median Household Income within Service Area")
 
+inc$cat <- "1. Pop. <1,000"
+inc$cat[which(inc$Pop.x>=1000)] <- "2. Pop. 1,000 - 10,000"
+inc$cat[which(inc$Pop.x>=10000)] <- "3. Pop. 10,000 - 100,000"
+inc$cat[which(inc$Pop.x>=100000)] <- "4. Pop. >= 100,000"
+
 p<- ggplot(inc, aes(x=`50th Percentile`, color=`Water System Ownership`), size=4) +
   geom_density(lwd=1.24, adjust=2) + 
   scale_color_viridis_d(labels = function(x) str_wrap(x, width=13)) + 
   theme_dark() + scale_x_log10() +
-  xlab("Median HH Income") + facet_wrap(vars(log10PopCat))
+  xlab("Median HH Income") + facet_wrap(vars(cat))
 
-png("Figures/Fig3A.png")
+png("Figures/Fig3.png")
 p
 dev.off()
 
