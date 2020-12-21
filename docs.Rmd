@@ -208,9 +208,9 @@ vars <- load_variables(2019, "acs5", cache = TRUE)
 
 Let's get all the Census Block Groups
 ```{r}
-bg <- get_acs(year=2019,geography = "block group",
-                  variables = census_vars2, geometry = TRUE, state= "CA") 
-save(bg, file="Data/census_blockgroups.rds")
+# bg <- get_acs(year=2019,geography = "block group",
+#                   variables = census_vars2, geometry = TRUE, state= "CA") 
+# save(bg, file="Data/census_blockgroups.rds")
 load("Data/census_blockgroups.rds")
 ```
 
@@ -421,13 +421,28 @@ aff <- left_join(aff,d.x,by="PWSID")
 aff <- st_as_sf(aff)
 ```
 
+Urban-Rural
+```{r urbanrural}
+d.ua <- st_join(d.x,st_transform(ua,3310), join=st_intersects, largest=TRUE)
+d.ua$Pop.y[which(is.na(d.ua$Pop.y))]<-10
+p<-ggplot(d.ua,aes(x=Pop.y,y=Pop.x, color=`Water System Ownership`)) +
+  geom_point() +
+  scale_x_log10() + scale_y_log10() + scale_color_viridis_d() + theme_dark() +
+  xlab("Population of Urbanized Area") + ylab("Water System Service Population") +
+  theme(legend.position=c(0.3,0.8))
+
+
+
+```
+
 
 Big map (urbanized areas and utilities)
 ```{r}
 m3 <- mapview(d.x,zcol="Water System Ownership", alpha=0.8, layer.name = "All Water System Boundaries") +
-  mapview(filter(aff,hhsize==4),stroke=TRUE,color="blue",alpha.regions=0, layer.name = "Systems with price information", alpha = 0.5)
-
+  mapview(filter(aff,hhsize==4),stroke=TRUE,color="red",alpha.regions=0, layer.name = "Systems with price information", alpha = 0.5, col.regions="red")
+mapshot(m3,"Figures/Map3.html")
 ```
+
 
 
 ```{r, include=FALSE}
