@@ -13,6 +13,12 @@ library(knitr)
 library(stargazer)
 library(readxl)
 library(mapview)
+
+mapviewPWS <- function(pwsid,...){
+  url <- paste0("https://geoconnex.us/ref/pws/",pwsid)
+  pws <- sf::read_sf(url)
+  mapview::mapview(pws,...)
+}
 ```
 
 # Data Preperation
@@ -324,8 +330,13 @@ m2<-mapview(bkfield,zcol="median_income",layer.name="Census Block Group - Median
 mapshot(m2,"Figures/Map2.html")
 ```
 
+
 Calculate affordability
 ```{r calcualte affordability}
+bg.bounds <- st_transform(bg.bounds,3310)
+bg.bounds$Area_BlockGroupPWS <- st_area(bg.bounds)
+bg.bounds$Percent_BlockGroupinPWS <- bg.bounds$Area_BlockGroupPWS/bg.bounds$AreaBlockGroup
+
 
 pws.income <- bg.bounds %>% st_drop_geometry() %>%
   left_join(bg,by="GEOID") %>%
@@ -398,7 +409,23 @@ pws.income <- bg.bounds %>% st_drop_geometry() %>%
 pws.income2 <-unnest(pws.income, cols = c(`20th Percentile`, `50th Percentile`, `NA`)) %>%
   select(PWSID,`20th Percentile`,`50th Percentile`) %>% distinct(.keep_all=TRUE)
 
+aff <- left_join(bills,pws.income2,by=c("pwsid"="PWSID"))
+aff$AR20 <- 12*100*aff$bill/aff$`20th Percentile`
+aff$MHI <- 12*100*aff$bill/aff$`50th Percentile`
+aff <- rename(aff,PWSID=pwsid)
+
+aff <- left_join(aff,d.x,by="PWSID")
+aff <- st_as_sf(aff)
 ```
+
+
+Big map (urbanized areas and utilities)
+```{r}
+m3 <- mapview(d.x,zcol="Water System Ownership", alpha=0.8, layer.name = "All Water System Boundaries") +
+  mapview(filter(aff,hhsize==4),stroke=TRUE,color="blue",alpha.regions=0, layer.name = "Systems with price information", alpha = 0.5)
+
+```
+
 
 ```{r, include=FALSE}
  
