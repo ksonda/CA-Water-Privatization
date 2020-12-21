@@ -15,6 +15,7 @@ library(readxl)
 library(mapview)
 library(viridis)
 library(DT)
+library(scales)
 
 mapviewPWS <- function(pwsid,...){
   url <- paste0("https://geoconnex.us/ref/pws/",pwsid)
@@ -421,17 +422,47 @@ aff <- left_join(aff,d.x,by="PWSID")
 aff <- st_as_sf(aff)
 ```
 
-Urban-Rural
+Urban-Rural-Income
 ```{r urbanrural}
 d.ua <- st_join(d.x,st_transform(ua,3310), join=st_intersects, largest=TRUE)
 d.ua$Pop.y[which(is.na(d.ua$Pop.y))]<-10
+d.ua <- distinct(d.ua,PWSID,.keep_all=TRUE)
 p<-ggplot(d.ua,aes(x=Pop.y,y=Pop.x, color=`Water System Ownership`)) +
   geom_point() +
   scale_x_log10() + scale_y_log10() + scale_color_viridis_d() + theme_dark() +
   xlab("Population of Urbanized Area") + ylab("Water System Service Population") +
-  theme(legend.position=c(0.3,0.8))
+  theme(legend.position=c(0.4,0.9))
+
+png("Figures/Fig2.png")
+p
+dev.off()
 
 
+inc <- left_join(pws.income2,d.ua,by="PWSID")
+# p<-ggplot(inc,aes(x=Pop.y,y=`50th Percentile`, color=`Water System Ownership`, size=Pop.x/1000)) + scale_size_binned("Service Pop. (1000s)", trans="identity", breaks=c(1,10,100,1000,10000)) +
+#   geom_point() +
+#   scale_x_log10() + scale_y_log10() + scale_color_viridis_d(labels = function(x) str_wrap(x, width=13)) + theme_dark() +
+#   xlab("Population of Urbanized Area") + ylab("Median Household Income within Service Area")
+
+p<- ggplot(inc, aes(x=`50th Percentile`, color=`Water System Ownership`), size=4) +
+  geom_density(lwd=1.24, adjust=2) + 
+  scale_color_viridis_d(labels = function(x) str_wrap(x, width=13)) + 
+  theme_dark() + scale_x_log10() +
+  xlab("Median HH Income") + facet_wrap(vars(log10PopCat))
+
+png("Figures/Fig3A.png")
+p
+dev.off()
+
+p<- ggplot(aff, aes(x=`50th Percentile`, color=`Water System Ownership`), size=4) +
+  geom_density(lwd=2, adjust=2) + 
+  scale_color_viridis_d(labels = function(x) str_wrap(x, width=13)) + 
+  theme_dark() + scale_x_log10() +
+  xlab("Median HH Income")
+
+png("Figures/Fig3b.png")
+p
+dev.off()
 
 ```
 
