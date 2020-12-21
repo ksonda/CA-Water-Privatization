@@ -13,6 +13,8 @@ library(knitr)
 library(stargazer)
 library(readxl)
 library(mapview)
+library(viridis)
+library(DT)
 
 mapviewPWS <- function(pwsid,...){
   url <- paste0("https://geoconnex.us/ref/pws/",pwsid)
@@ -120,25 +122,25 @@ bills$bill <- bills$service_charge + bills$volumetric_charge
 ```
 Now we need to categorize them all by ownership type. To Recover ownership type, we read in the latest EAR
 ```{r type}
-# ear13 <- read_tsv("Data/EAR/earsurveyresults_2013ry.zip",col_types="ccdcccdddc")
-#  ear14 <- read_tsv("Data/EAR/earsurveyresults_2014ry.zip",col_types="ccdcccdddc")
-#  ear15 <- read_tsv("Data/EAR/earsurveyresults_2015ry.zip",col_types="ccdcccdddc")
-#  ear16 <- read_tsv("Data/EAR/earsurveyresults_2016ry.zip",col_types="ccdcccdddc")
-#  ear17 <- read_tsv("Data/EAR/earsurveyresults_2017ry.zip",col_types="ccdcccdddc")
-#  ear18 <- read_tsv("Data/EAR/earsurveyresults_2018ry.zip",col_types="ccdcccdddc")
-#  ear19 <- read_tsv("Data/EAR/earsurveyresults_2019ry.zip",col_names=c("PWSID",
-#                                                                       "Survey",
-#                                                                       "Year",
-#                                                                       "SectionName",
-#                                                                       "QuestionName",
-#                                                                       "QuestionResults",
-#                                                                       "SurveyID",
-#                                                                       "SectionID",
-#                                                                       "QuestionID",
-#                                                                       "Pk"), col_types="ccdcccdddc")
-# ear <- bind_rows(ear13,ear14,ear15,ear16,ear17,ear18,ear19)
-# save(ear,file="Data/ear.rds")
-load("Data/ear.rds")
+ear13 <- read_tsv("Data/EAR/earsurveyresults_2013ry.zip",col_types="ccdcccdddc")
+ ear14 <- read_tsv("Data/EAR/earsurveyresults_2014ry.zip",col_types="ccdcccdddc")
+ ear15 <- read_tsv("Data/EAR/earsurveyresults_2015ry.zip",col_types="ccdcccdddc")
+ ear16 <- read_tsv("Data/EAR/earsurveyresults_2016ry.zip",col_types="ccdcccdddc")
+ ear17 <- read_tsv("Data/EAR/earsurveyresults_2017ry.zip",col_types="ccdcccdddc")
+ ear18 <- read_tsv("Data/EAR/earsurveyresults_2018ry.zip",col_types="ccdcccdddc")
+ ear19 <- read_tsv("Data/EAR/earsurveyresults_2019ry.zip",col_names=c("PWSID",
+                                                                      "Survey",
+                                                                      "Year",
+                                                                      "SectionName",
+                                                                      "QuestionName",
+                                                                      "QuestionResults",
+                                                                      "SurveyID",
+                                                                      "SectionID",
+                                                                      "QuestionID",
+                                                                      "Pk"), col_types="ccdcccdddc")
+ear <- bind_rows(ear13,ear14,ear15,ear16,ear17,ear18,ear19)
+save(ear,file="Data/ear.rds")
+#load("Data/ear.rds")
 ownership <- ear %>% filter(QuestionName %in% c("Water System Ownership",
                                     "IsWholesaler")) %>% 
   select(PWSID, 
@@ -209,6 +211,7 @@ Let's get all the Census Block Groups
 bg <- get_acs(year=2019,geography = "block group",
                   variables = census_vars2, geometry = TRUE, state= "CA") 
 save(bg, file="Data/census_blockgroups.rds")
+load("Data/census_blockgroups.rds")
 ```
 
 Let's get all the Urbanized Areas and combine them into super areas.
