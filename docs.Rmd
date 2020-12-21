@@ -293,7 +293,7 @@ d1 <- d.b[bkfield,,op=st_intersects]
 pl1 <- st_transform(pl,4326)[bkfield,,op=st_intersects]
 
 m <- mapview(d1,zcol="Water System Ownership", alpha=0.8, layer.name = "Water System Boundaries") +
-  mapview(pl1, stroke=TRUE,zcol="NAME", color="red", alpha.regions=0, layer.name = "Municipal Boundaries",lwd=2,legend=FALSE)
+  mapview(pl1, stroke=TRUE, color="red", alpha.regions=0, layer.name = "Municipal Boundaries",lwd=2,legend=TRUE,col.regions="red")
 mapshot(m,"Figures/Map1.html")
 
 d.x <- st_buffer(st_transform(d.b,3310),dist=0)
@@ -320,7 +320,7 @@ bkfield <- bg.bounds[bkfield,]
 
 bk.bound <- d.b[bkfield,,op=st_intersects]
 
-m2<-mapview(bkfield,zcol="median_income",layer.name="Census Block Group - Median HH Income") + mapview(bk.bound, alpha=1, layer.name = "Water System Boundaries", stroke=TRUE,color="black",col.regions="black", alpha.regions=0, lwd=4)
+m2<-mapview(bkfield,zcol="median_income",layer.name="Census Block Group - Median HH Income") + mapview(bk.bound, alpha=1, layer.name = "Water System Boundaries", stroke=TRUE,color="black",col.regions="black", alpha.regions=0, lwd=4,legend=TRUE)
 mapshot(m2,"Figures/Map2.html")
 ```
 
