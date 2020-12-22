@@ -331,7 +331,7 @@ bkfield <- bg.bounds[bkfield,]
 bk.bound <- d.b[bkfield,,op=st_intersects]
 
 m2<-mapview(bkfield,zcol="median_income",layer.name="Census Block Group - Median HH Income") + mapview(bk.bound, alpha=1, layer.name = "Water System Boundaries", stroke=TRUE,color="black",col.regions="black", alpha.regions=0, lwd=4,legend=TRUE)
-mapshot(m2,"Figures/Map2.html")
+#mapshot(m2,"Figures/Map2.html")
 ```
 
 
@@ -483,15 +483,21 @@ mapshot(m3,"Figures/Map3.html")
 
 SUmmarize ILI
 ```{r audit}
-audit <- read_csv("Data/audit.csv")
-matches <- regmatches(audit$PWS_ID_OR_OTHER_ID, gregexpr("[[:digit:]]+", audit$PWS_ID_OR_OTHER_ID))
-audit$x<-matches
-audit$y<-audit$x
-audit$y[which(nchar(audit$x)==6)]<-paste0("0",audit$x[which(nchar(audit$x)==6)])
-audit$pwsid<-paste0("CA",audit$y)
-
-a<-select(audit,pwsid,PI_INFRASTRUCT_LEAKAGE_INDEX,REPORTING_YEAR, WATER_SUPPLIER_NAME, SUPPLIER_NAME) 
-write.csv(a,"audit_to_correct_pwsid.csv")
+audit <- read_csv("Data/audit_corrected.csv")
+audit <- audit %>% 
+  rename(PWSID=pwsid,
+         ILI=PI_INFRASTRUCT_LEAKAGE_INDEX) %>%
+  group_by(PWSID)  %>%
+  summarise(ILI=mean(ILI,na.rm=TRUE))
+# audit <- read_csv("Data/audit.csv")
+# matches <- regmatches(audit$PWS_ID_OR_OTHER_ID, gregexpr("[[:digit:]]+", audit$PWS_ID_OR_OTHER_ID))
+# audit$x<-matches
+# audit$y<-audit$x
+# audit$y[which(nchar(audit$x)==6)]<-paste0("0",audit$x[which(nchar(audit$x)==6)])
+# audit$pwsid<-paste0("CA",audit$y)
+# 
+# a<-select(audit,pwsid,PI_INFRASTRUCT_LEAKAGE_INDEX,REPORTING_YEAR, WATER_SUPPLIER_NAME, SUPPLIER_NAME) 
+# write.csv(a,"audit_to_correct_pwsid.csv")
 ```
 
 Summarize SDWA status
