@@ -420,6 +420,7 @@ aff <- rename(aff,PWSID=pwsid)
 
 aff <- left_join(aff,d.x,by="PWSID")
 aff <- st_as_sf(aff)
+aff <- distinct(aff,PWSID,`Water System Ownership`,hhsize,.keep_all=TRUE)
 ```
 
 Urban-Rural-Income
@@ -444,10 +445,10 @@ inc <- left_join(pws.income2,d.ua,by="PWSID")
 #   scale_x_log10() + scale_y_log10() + scale_color_viridis_d(labels = function(x) str_wrap(x, width=13)) + theme_dark() +
 #   xlab("Population of Urbanized Area") + ylab("Median Household Income within Service Area")
 
-inc$cat <- "1. Pop. <1,000"
-inc$cat[which(inc$Pop.x>=1000)] <- "2. Pop. 1,000 - 10,000"
-inc$cat[which(inc$Pop.x>=10000)] <- "3. Pop. 10,000 - 100,000"
-inc$cat[which(inc$Pop.x>=100000)] <- "4. Pop. >= 100,000"
+inc$cat <- "1. Pop. <1,000 (n=1753)"
+inc$cat[which(inc$Pop.x>=1000)] <- "2. Pop. 1,000 - 10,000 (n=456)"
+inc$cat[which(inc$Pop.x>=10000)] <- "3. Pop. 10,000 - 100,000 (n=326)"
+inc$cat[which(inc$Pop.x>=100000)] <- "4. Pop. >= 100,000 (n=82)"
 
 p<- ggplot(inc, aes(x=`50th Percentile`, color=`Water System Ownership`), size=4) +
   geom_density(lwd=1.24, adjust=2) + 
@@ -480,19 +481,70 @@ mapshot(m3,"Figures/Map3.html")
 ```
 
 
+SUmmarize ILI
+```{r audit}
+audit <- read_csv("Data/audit.csv")
+matches <- regmatches(audit$PWS_ID_OR_OTHER_ID, gregexpr("[[:digit:]]+", audit$PWS_ID_OR_OTHER_ID))
+audit$x<-matches
+audit$y<-audit$x
+audit$y[which(nchar(audit$x)==6)]<-paste0("0",audit$x[which(nchar(audit$x)==6)])
+audit$pwsid<-paste0("CA",audit$y)
 
-```{r, include=FALSE}
- 
- ear19 <- read_tsv("Data/EAR/earsurveyresults_2019ry.zip",col_types="ccdcccdddc")
- 
- ear <- bind_rows(ear13,ear14,ear15,ear16,ear17,ear18,ear19)
- rm(ear13,ear14,ear15,ear16,ear17,ear18,ear19)
- save(ear,file="Data/EAR/ear.rds")
-#load("Data/EAR/ear.rds")
+a<-select(audit,pwsid,PI_INFRASTRUCT_LEAKAGE_INDEX,REPORTING_YEAR, WATER_SUPPLIER_NAME, SUPPLIER_NAME) 
+write.csv(a,"audit_to_correct_pwsid.csv")
 ```
 
+Summarize SDWA status
+```{r, include=FALSE}
+ 
+v <- read_csv("Data/SDWA_SERIOUS_VIOLATORS.csv")
+v <- v%>% dplyr::select(PWSID,FISCAL_YEAR,SERIOUS_VIOLATOR,STATE) %>% filter(STATE=="CA")
+v$count=1
+v <- v%>%group_by(PWSID)%>%summarize(years_serious_violater=sum(count))
 
+```
+
+Summarize shutoffs
+```{r}
+shutoffs <- ear %>% filter(substr(QuestionName,1,12)=="WR SHUT_OFFS" & Year==2018)
+
+pws_shutoff_collect <- shutoffs %>% filter(QuestionName=="WR SHUT_OFFS Once No Collect" & is.na(QuestionResults))
+
+shutoffs_total <- shutoffs %>%
+  filter(QuestionName=="WR SHUT_OFFS Once SF Total" |
+           QuestionName=="WR SHUT_OFFS More Than Once SF Total" |
+           QuestionName=="WR SHUT_OFFS More Than Once MF Total" |
+           QuestionName=="WR SHUT_OFFS Once SF Total") %>%
+  group_by(PWSID) %>%
+  summarise(shutoffs=sum(as.numeric(QuestionResults),na.rm=TRUE))%>%
+  select(PWSID,shutoffs) %>%
+  distinct(.keep_all=TRUE) %>% semi_join(pws_shutoff_collect,by="PWSID")
+```
+
+Summarize subsidies
+```{r}
+subs <- ear %>% filter(substr(QuestionName,1,5)=="WR LL" & Year>=2016)
+subsidies <- ear %>% 
+  filter(QuestionName=="WR LL Subsidies") %>% 
+  #filter(QuestionResults!="-") %>% 
+  select(PWSID,QuestionResults,Year) %>% 
+  rename(subsidy=QuestionResults) %>% distinct(.keep_all=TRUE) 
+```
 
 # Descriptive Statistics and Plots
+
+make big table
+```{r}
+D <- aff 
+
+a.D <- a %>% 
+  group_by(pwsid) %>%
+  mutate(maxYear = max(REPORTING_YEAR)) %>%
+  filter(maxYear == REPORTING_YEAR) %>% rename(ILI = PI_INFRASTRUCT_LEAKAGE_INDEX, PWSID=pwsid) %>% select(PWSID, ILI, REPORTING_YEAR)
+write.csv(a.D,"audit_clean.csv")
+## Add ILI
+D <- D%>% left_join(a,by=c("PWSID"="pwsid"))
+
+```
 
 # Regression
