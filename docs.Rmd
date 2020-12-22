@@ -488,16 +488,9 @@ audit <- audit %>%
   rename(PWSID=pwsid,
          ILI=PI_INFRASTRUCT_LEAKAGE_INDEX) %>%
   group_by(PWSID)  %>%
+  distinct(PWSID,REPORTING_YEAR,.keep_all = TRUE) %>%
   summarise(ILI=mean(ILI,na.rm=TRUE))
-# audit <- read_csv("Data/audit.csv")
-# matches <- regmatches(audit$PWS_ID_OR_OTHER_ID, gregexpr("[[:digit:]]+", audit$PWS_ID_OR_OTHER_ID))
-# audit$x<-matches
-# audit$y<-audit$x
-# audit$y[which(nchar(audit$x)==6)]<-paste0("0",audit$x[which(nchar(audit$x)==6)])
-# audit$pwsid<-paste0("CA",audit$y)
-# 
-# a<-select(audit,pwsid,PI_INFRASTRUCT_LEAKAGE_INDEX,REPORTING_YEAR, WATER_SUPPLIER_NAME, SUPPLIER_NAME) 
-# write.csv(a,"audit_to_correct_pwsid.csv")
+
 ```
 
 Summarize SDWA status
@@ -512,7 +505,7 @@ v <- v%>%group_by(PWSID)%>%summarize(years_serious_violater=sum(count))
 
 Summarize shutoffs
 ```{r}
-shutoffs <- ear %>% filter(substr(QuestionName,1,12)=="WR SHUT_OFFS" & Year==2018)
+shutoffs <- ear %>% filter(substr(QuestionName,1,12)=="WR SHUT_OFFS" & Year==2019)
 
 pws_shutoff_collect <- shutoffs %>% filter(QuestionName=="WR SHUT_OFFS Once No Collect" & is.na(QuestionResults))
 
@@ -521,7 +514,7 @@ shutoffs_total <- shutoffs %>%
            QuestionName=="WR SHUT_OFFS More Than Once SF Total" |
            QuestionName=="WR SHUT_OFFS More Than Once MF Total" |
            QuestionName=="WR SHUT_OFFS Once SF Total") %>%
-  group_by(PWSID) %>%
+  group_by(PWSID, Year) %>%
   summarise(shutoffs=sum(as.numeric(QuestionResults),na.rm=TRUE))%>%
   select(PWSID,shutoffs) %>%
   distinct(.keep_all=TRUE) %>% semi_join(pws_shutoff_collect,by="PWSID")
@@ -529,10 +522,10 @@ shutoffs_total <- shutoffs %>%
 
 Summarize subsidies
 ```{r}
-subs <- ear %>% filter(substr(QuestionName,1,5)=="WR LL" & Year>=2016)
+subs <- ear %>% filter(substr(QuestionName,1,5)=="WR LL" & Year==2019)
 subsidies <- ear %>% 
-  filter(QuestionName=="WR LL Subsidies") %>% 
-  #filter(QuestionResults!="-") %>% 
+  filter(QuestionName=="WR LL Subsidies" & Year == 2019) %>% 
+  filter(QuestionResults!="-") %>% 
   select(PWSID,QuestionResults,Year) %>% 
   rename(subsidy=QuestionResults) %>% distinct(.keep_all=TRUE) 
 ```
