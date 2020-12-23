@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Documentation"
 output: github_document
 ---
 
@@ -16,6 +16,8 @@ library(mapview)
 library(viridis)
 library(DT)
 library(scales)
+library(vtable)
+library(lfe)
 
 mapviewPWS <- function(pwsid,...){
   url <- paste0("https://geoconnex.us/ref/pws/",pwsid)
@@ -522,12 +524,18 @@ shutoffs_total <- shutoffs %>%
 
 Summarize subsidies
 ```{r}
-subs <- ear %>% filter(substr(QuestionName,1,5)=="WR LL" & Year==2019)
+
 subsidies <- ear %>% 
-  filter(QuestionName=="WR LL Subsidies" & Year == 2019) %>% 
+  filter(QuestionName=="WR LL Subsidies") %>% 
   filter(QuestionResults!="-") %>% 
   select(PWSID,QuestionResults,Year) %>% 
   rename(subsidy=QuestionResults) %>% distinct(.keep_all=TRUE) 
+
+subs <- subsidies %>% 
+  group_by(PWSID) %>%
+  mutate(maxYear=max(Year)) %>%
+  ungroup() %>%
+  filter(Year == maxYear)
 ```
 
 # Descriptive Statistics and Plots
@@ -536,14 +544,83 @@ make big table
 ```{r}
 D <- aff 
 
-a.D <- a %>% 
-  group_by(pwsid) %>%
-  mutate(maxYear = max(REPORTING_YEAR)) %>%
-  filter(maxYear == REPORTING_YEAR) %>% rename(ILI = PI_INFRASTRUCT_LEAKAGE_INDEX, PWSID=pwsid) %>% select(PWSID, ILI, REPORTING_YEAR)
-write.csv(a.D,"audit_clean.csv")
-## Add ILI
-D <- D%>% left_join(a,by=c("PWSID"="pwsid"))
+D <- left_join(D,audit,by="PWSID") # add ILI
 
+D <- left_join(D,v,by="PWSID") #add SDWA violator status
+  D$years_serious_violater[which(is.na(D$years_serious_violater))] <- 0
+
+D <- left_join(D, shutoffs_total, by="PWSID") #add shutoffs_total  
+D$shutoffs_perc = D$shutoffs/as.numeric(D$ServConn)
+
+D <- left_join(D,subs,by="PWSID") ## add subsidy programs
+
+save(D,"Data/FinalData.rds")
 ```
 
+descriptive stats
+```{r, results="asis"}
+rm(list=ls())
+load("Data/FinalData.rds")
+D.f <- D
+D <- D.f
+D <- D %>% ungroup() %>% distinct(PWSID,hhsize,.keep_all = TRUE)
+
+D1 <- D%>%filter(hhsize==1) 
+D2 <- D%>%filter(hhsize==2) %>% select(PWSID,consumption,bill,AR20) %>% rename(consumption_2=consumption,
+                                                                                      bill_hhsize2=bill, AR20_hhsize2 = AR20) %>% st_drop_geometry()
+D3 <- D%>%filter(hhsize==3) %>% select(PWSID,consumption,bill,AR20) %>% rename(consumption_3=consumption,
+                                                                                      bill_hhsize3=bill, AR20_hhsize3 = AR20)  %>% st_drop_geometry()
+D4 <- D%>%filter(hhsize==4) %>% select(PWSID,consumption,bill,AR20)%>% rename(consumption_4=consumption,
+                                                                                      bill_hhsize4=bill, AR20_hhsize4 = AR20)  %>% st_drop_geometry()
+D5 <- D%>%filter(hhsize==5) %>% select(PWSID,consumption,bill,AR20)%>% rename(consumption_5=consumption,
+                                                                                      bill_hhsize5=bill, AR20_hhsize5 = AR20) %>% st_drop_geometry()
+D6 <- D%>%filter(hhsize==6) %>% select(PWSID,consumption,bill,AR20)%>% rename(consumption_6=consumption,
+                                                                                      bill_hhsize6=bill, AR20_hhsize6 = AR20) %>% st_drop_geometry()
+D7 <- D%>%filter(hhsize==7) %>% select(PWSID,consumption,bill,AR20)%>% rename(consumption_7=consumption,
+                                                                                      bill_hhsize7=bill, AR20_hhsize7 = AR20) %>% st_drop_geometry()
+
+
+
+D.wide <- D1 %>% 
+  left_join(D2,by="PWSID") %>%
+  left_join(D3,by="PWSID") %>%
+  left_join(D4,by="PWSID") %>%
+  left_join(D5,by="PWSID") %>%
+  left_join(D6,by="PWSID") %>%
+  left_join(D7,by="PWSID") 
+
+D.wide$geometry <- NULL
+library(psych)
+
+D.wide <- filter(D.wide,!is.na(AR20))
+D.wide2 <- D.wide %>% select(PWSID,Pop,`Water System Ownership`, 
+                  `20th Percentile`, `50th Percentile`,
+                 ILI, years_serious_violater, shutoffs_perc,subsidy,
+                 bill_type,bill,bill_hhsize2,bill_hhsize3,bill_hhsize4,bill_hhsize5,bill_hhsize6,bill_hhsize7,
+                 AR20,AR20_hhsize2,AR20_hhsize3,AR20_hhsize4,AR20_hhsize5,AR20_hhsize6,AR20_hhsize7)
+
+D.wide2$bill_type[which(D.wide2$bill_type %in% c("1.49*usage_ccf","3.04*usage_ccf*1.333"))] <- "Uniform"
+
+st(D.wide2, group='Water System Ownership', group.test=TRUE, digits=2)
+
+D.wide3 <- filter(D.wide2,`Water System Ownership` %in% c("Local Government","Privately owned, PUC-regulated, for profit water company"))
+
+st(D.wide3, group='Water System Ownership', group.test=TRUE, digits=2)
+D.wide3$subsidy[which(is.na(D.wide3$subsidy))] <- "NA"
+
+ggplot(filter(D.wide2,Pop>0), aes(x=Pop,y=AR20_hhsize4,color=`Water System Ownership`, shape=subsidy, cex=2))  + geom_hline(yintercept=3.5, color="green", lwd=2)+ geom_point(size=2) + scale_x_log10() + theme_dark() + scale_color_viridis_d() + theme(legend.position=c(0.7,0.6)) + xlab("Service Population (log10 scale)") + ylab("AR20 for 4-person Household")  # + geom_smooth(formula=y~log10(x),method='lm')
+
+bounds <- sf::read_sf("https://opendata.arcgis.com/datasets/fbba842bf134497c9d611ad506ec48cc_0.geojson")
+counties <- sf::read_sf("https://info.geoconnex.us/collections/counties/items?limit=10000&STATEFP=06")
+
+inv <- read_excel("Data/EAR/inventory.xlsx",
+                  sheet = "SDWISWaterSystemInventory071620") 
+
+D.wide2 <- left_join(D.wide2,bounds,by="PWSID") 
+D.wide3 <- left_join(D.wide3,bounds,by="PWSID") 
+D.wide3 <- filter(Pop>0)
+
+m1 <- felm(data=D.wide3,AR20_hhsize4 ~ as.factor(`Water System Ownership`) + log(Pop))
+
+```
 # Regression
