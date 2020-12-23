@@ -18,6 +18,7 @@ library(DT)
 library(scales)
 library(vtable)
 library(lfe)
+library(ggpubr)
 
 mapviewPWS <- function(pwsid,...){
   url <- paste0("https://geoconnex.us/ref/pws/",pwsid)
@@ -472,6 +473,8 @@ png("Figures/Fig3b.png")
 p
 dev.off()
 
+
+
 ```
 
 
@@ -608,19 +611,123 @@ D.wide3 <- filter(D.wide2,`Water System Ownership` %in% c("Local Government","Pr
 st(D.wide3, group='Water System Ownership', group.test=TRUE, digits=2)
 D.wide3$subsidy[which(is.na(D.wide3$subsidy))] <- "NA"
 
-ggplot(filter(D.wide2,Pop>0), aes(x=Pop,y=AR20_hhsize4,color=`Water System Ownership`, shape=subsidy, cex=2))  + geom_hline(yintercept=3.5, color="green", lwd=2)+ geom_point(size=2) + scale_x_log10() + theme_dark() + scale_color_viridis_d() + theme(legend.position=c(0.7,0.6)) + xlab("Service Population (log10 scale)") + ylab("AR20 for 4-person Household")  # + geom_smooth(formula=y~log10(x),method='lm')
+f4<-ggplot(filter(D.wide2,Pop>0), aes(x=Pop,y=AR20_hhsize4,color=`Water System Ownership`, shape=subsidy, cex=2))  + geom_hline(yintercept=3.5, color="green", lwd=2)+ geom_point(size=2) + scale_x_log10() + theme_dark() + scale_color_viridis_d() + theme(legend.position=c(0.7,0.6)) + xlab("Service Population (log10 scale)") + ylab("AR20 for 4-person Household")  # + geom_smooth(formula=y~log10(x),method='lm')
+png("Figures/Figure4.png")
+f4
+dev.off()
 
-bounds <- sf::read_sf("https://opendata.arcgis.com/datasets/fbba842bf134497c9d611ad506ec48cc_0.geojson")
-counties <- sf::read_sf("https://info.geoconnex.us/collections/counties/items?limit=10000&STATEFP=06")
+f5 <- ggplot(D.wide3, aes(x=AR20_hhsize4, color=`Water System Ownership`), size=4) +
+  geom_density(lwd=2) + 
+  scale_color_viridis_d() + 
+  theme_dark() + 
+  xlab("AR20")
+
+
+f6 <- ggplot(D.wide3, aes(x=shutoffs_perc*100, color=`Water System Ownership`), size=4) +
+  geom_density(lwd=2) + 
+  scale_color_viridis_d() + 
+  theme_dark() + 
+  xlab("Shutoff rate")
+
+f7 <- ggplot(D.wide3, aes(x=ILI, color=`Water System Ownership`), size=4) +
+  geom_density(lwd=2) + 
+  scale_color_viridis_d() + 
+  theme_dark() + 
+  xlab("ILI")
+
+f8 <- ggplot(D.wide3, aes(x=`years_serious_violater`, color=`Water System Ownership`), size=4) +
+  geom_density(lwd=2) + 
+  scale_color_viridis_d() + 
+  theme_dark() + 
+  xlab("Years in which USEPA has labelled serious SDWA Violator")
+
+F5 <- ggarrange(f5,f6,f7,f8, labels = c("A: AR20 (HH size 4)", "B: Shutoff Rate (%)","C: ILI", "D: SDWA Violation"),
+                common.legend=TRUE, legend="bottom")
+
+
 
 inv <- read_excel("Data/EAR/inventory.xlsx",
                   sheet = "SDWISWaterSystemInventory071620") 
 
-D.wide2 <- left_join(D.wide2,bounds,by="PWSID") 
-D.wide3 <- left_join(D.wide3,bounds,by="PWSID") 
-D.wide3 <- filter(Pop>0)
+inv <- select(inv,PWSID,County)
 
-m1 <- felm(data=D.wide3,AR20_hhsize4 ~ as.factor(`Water System Ownership`) + log(Pop))
+D.wide2 <- left_join(D.wide2,inv,by="PWSID") 
+D.wide3 <- left_join(D.wide3,inv,by="PWSID") 
+D.wide3 <- filter(D.wide3,Pop>0)
+D.wide3$shutoffs_perc <- 100*D.wide3$shutoffs_perc
 
+myfelmAR <- function(data){
+
+list.B <- list()
+list.B$B2.2 <- felm(data=data,AR20_hhsize2 ~ `Water System Ownership` + log(Pop)  + `50th Percentile`|0|0|County)
+list.B$B3.2 <- felm(data=data,AR20_hhsize3 ~ `Water System Ownership` + log(Pop) + `50th Percentile` |0|0|County)
+list.B$B4.2 <- felm(data=data,AR20_hhsize4 ~ `Water System Ownership` + log(Pop) + `50th Percentile` |0|0|County)
+list.B$B5.2 <- felm(data=data,AR20_hhsize5 ~ `Water System Ownership` + log(Pop) + `50th Percentile` |0|0|County)
+list.B$B6.2 <- felm(data=data,AR20_hhsize6 ~ `Water System Ownership` + log(Pop) + `50th Percentile` |0|0|County)
+list.B$S2.2 <- felm(data=filter(data,subsidy!="NA"),shutoffs_perc ~ `Water System Ownership` + log(Pop)  + `50th Percentile` + AR20_hhsize4 + subsidy|0|0|County)
+return(list.B)
+}  
+
+myfelmILI <- function(data){
+
+list.B <- list()
+list.B$B2.1 <- felm(data=data,ILI ~ log(Pop) + `50th Percentile` +  bill_hhsize4|0|0|County)
+list.B$B2.2 <- felm(data=data,ILI ~ `Water System Ownership` + log(Pop)  + `50th Percentile` + bill_hhsize4|0|0|County)
+list.B$B2.3 <- felm(data=data,ILI ~ `Water System Ownership` + log(Pop)  + `50th Percentile` + bill_hhsize4|County|0|County)
+
+
+return(list.B)
+}  
+
+myfelmV <- function(data){
+
+list.B <- list()
+list.B$B2.1 <- felm(data=data,`years_serious_violater` ~ log(Pop) + `50th Percentile` +  bill_hhsize4|0|0|County)
+list.B$B2.2 <- felm(data=data,`years_serious_violater` ~ `Water System Ownership` + log(Pop)  + `50th Percentile` + bill_hhsize4|0|0|County)
+list.B$B2.3 <- felm(data=data,`years_serious_violater` ~ `Water System Ownership` + log(Pop)  + `50th Percentile` + bill_hhsize4|County|0|County)
+
+
+return(list.B)
+}  
+
+myfelmSO <- function(data){
+
+list.B <- list()
+list.B$B2.1 <- felm(data=filter(data,subsidy!="NA"),shutoffs_perc ~ log(Pop) + `50th Percentile` + AR20_hhsize4 + subsidy |0|0|County)
+list.B$B2.2 <- felm(data=filter(data,subsidy!="NA"),shutoffs_perc ~ `Water System Ownership` + log(Pop)  + `50th Percentile` + AR20_hhsize4 + subsidy|0|0|County)
+list.B$B2.3 <- felm(data=filter(data,subsidy!="NA"),shutoffs_perc ~ `Water System Ownership` + log(Pop)  + `50th Percentile`  + AR20_hhsize4 + subsidy|County|0|County)
+
+
+return(list.B)
+}  
+
+
+myfelmP <- function(data){
+  
+list.B <- list()
+  list.B$I2.2 <- felm(data=data,ILI ~ `Water System Ownership` + log(Pop)  + `50th Percentile` + bill_hhsize4|0|0|County)
+  list.B$V2.2 <- felm(data=data,`years_serious_violater` ~ `Water System Ownership` + log(Pop)  + `50th Percentile` + bill_hhsize4|0|0|County)
+  return(list.B)
+}
+
+  
 ```
 # Regression
+```{r, results="asis"}
+l1 <- myfelmAR(D.wide3)
+l2 <- myfelmSO(D.wide3)
+l3 <- myfelmILI(D.wide3)
+l4 <- myfelmV(D.wide3)
+
+l5 <- myfelmAR(D.wide3)
+lP <-myfelmP(D.wide3)
+
+stargazer(l1,type="html",out="Tables/AR20Regression.html")
+
+stargazer(l2,type="html",out="Tables/SORegression.html")
+stargazer(l3,type="html",out="Tables/ILIRegression.html")
+stargazer(l4,type="html",out="Tables/VRegression.html")
+
+stargazer(l5,type="html",out="Tables/ERegression.html")
+stargazer(lP,type="html",out="Tables/PRegression.html")
+```
