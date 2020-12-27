@@ -450,7 +450,7 @@ p<-ggplot(d.ua,aes(x=Pop.y,y=Pop.x, color=`Water System Ownership`)) +
 png("Figures/Fig2.png")
 p
 dev.off()
-
+p
 
 inc <- left_join(pws.income2,d.ua,by="PWSID")
 # p<-ggplot(inc,aes(x=Pop.y,y=`50th Percentile`, color=`Water System Ownership`, size=Pop.x/1000)) + scale_size_binned("Service Pop. (1000s)", trans="identity", breaks=c(1,10,100,1000,10000)) +
@@ -472,6 +472,8 @@ p<- ggplot(inc, aes(x=`50th Percentile`, color=`Water System Ownership`), size=4
 png("Figures/Fig3.png")
 p
 dev.off()
+p
+
 
 p<- ggplot(aff, aes(x=`50th Percentile`, color=`Water System Ownership`), size=4) +
   geom_density(lwd=2, adjust=2) + 
@@ -482,6 +484,8 @@ p<- ggplot(aff, aes(x=`50th Percentile`, color=`Water System Ownership`), size=4
 png("Figures/Fig3b.png")
 p
 dev.off()
+
+p
 
 
 
@@ -627,6 +631,8 @@ png("Figures/Figure4.png")
 f4
 dev.off()
 
+f4
+
 f5 <- ggplot(D.wide3, aes(x=AR20_hhsize4, color=`Water System Ownership`), size=4) +
   geom_density(lwd=2) + 
   scale_color_viridis_d() + 
@@ -655,7 +661,7 @@ f8 <- ggplot(D.wide3, aes(x=`years_serious_violater`, color=`Water System Owners
 F5 <- ggarrange(f5,f6,f7,f8, labels = c("A: AR20 (HH size 4)", "B: Shutoff Rate (%)","C: ILI", "D: SDWA Violation"),
                 common.legend=TRUE, legend="bottom")
 
-
+F5
 
 inv <- read_excel("Data/EAR/inventory.xlsx",
                   sheet = "SDWISWaterSystemInventory071620") 
