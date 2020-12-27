@@ -521,7 +521,7 @@ v <- v%>%group_by(PWSID)%>%summarize(years_serious_violater=sum(count))
 
 Summarize shutoffs
 ```{r}
-shutoffs <- ear %>% filter(substr(QuestionName,1,12)=="WR SHUT_OFFS" & Year==2019)
+shutoffs <- ear %>% filter(substr(QuestionName,1,12)=="WR SHUT_OFFS" & Year==2018)
 
 pws_shutoff_collect <- shutoffs %>% filter(QuestionName=="WR SHUT_OFFS Once No Collect" & is.na(QuestionResults))
 
