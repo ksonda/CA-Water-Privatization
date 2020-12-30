@@ -35,4 +35,8 @@ vignettes/*.pdf
 *.utf8.md
 *.knit.md
 Data/ear.rds
+
 Data/EAR/ear.rds
+
+Data/FinalDataDec23.rds
+
