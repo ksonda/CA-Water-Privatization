@@ -315,7 +315,7 @@ m <-  mapview(pl1,
   mapview(d1,
           zcol="Water System Ownership",
           alpha=0.8, layer.name = "Water System Boundaries") 
-#mapshot(m,"Figures/Map1.html")
+mapshot(m,"Figures/Map1.html")
 m
 
 d.x <- st_buffer(st_transform(d.b,3310),dist=0)
