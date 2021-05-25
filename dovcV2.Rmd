@@ -19,6 +19,7 @@ library(scales)
 library(vtable)
 library(lfe)
 library(ggpubr)
+library(dineq)
 
 mapviewPWS <- function(pwsid,...){
   url <- paste0("https://geoconnex.us/ref/pws/",pwsid)
@@ -200,7 +201,9 @@ rm(own1,own2)
 own2 <- own %>% left_join(sdwis,by=c("PWSID" = "SERVICE_AREA.PWSID"))
 own2$SERVICE_AREA.IS_PRIMARY_SERVICE_AREA_CODE[which(is.na(own2$SERVICE_AREA.IS_PRIMARY_SERVICE_AREA_CODE))] <- "N"
 
-own <- own2 %>% filter(SERVICE_AREA.SERVICE_AREA_TYPE_CODE %in% c("HA","MH","MU","OA","ON","OR","RA","SR","SU","WH") & SERVICE_AREA.IS_PRIMARY_SERVICE_AREA_CODE == "Y")
+own <- own2 %>% filter(SERVICE_AREA.SERVICE_AREA_TYPE_CODE %in% c("HA","MH","MU","OA","ON","OR","RA","SR","SU") & SERVICE_AREA.IS_PRIMARY_SERVICE_AREA_CODE == "Y")
+
+own_d <- left_join(inv,own,by="PWSID")
 ```
 ## Census data
 
@@ -234,7 +237,9 @@ census_vars2 <- c(median_income="B19013_001",
                  QUL1 = "B19080_001",
                  QUL2 = "B19080_002",
                  QUL3 = "B19080_003",
-                 QUL4 = "B19080_004"
+                 QUL4 = "B19080_004",
+                 pop_pov = "C17002_001",
+                 pop_gr_200FPL = "C17002_008" 
                  )
 
 ```
@@ -251,9 +256,9 @@ vars <- load_variables(2019, "acs5", cache = TRUE)
 
 Let's get all the Census Block Groups
 ```{r}
-# bg <- get_acs(year=2019,geography = "block group",
-#                   variables = census_vars2, geometry = TRUE, state= "CA") 
-# save(bg, file="Data/census_blockgroups.rds")
+ bg <- get_acs(year=2019,geography = "block group",
+                   variables = census_vars2, geometry = TRUE, state= "CA") 
+ save(bg, file="Data/census_blockgroups.rds")
 load("Data/census_blockgroups.rds")
 ```
 
