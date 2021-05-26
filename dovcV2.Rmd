@@ -20,6 +20,7 @@ library(vtable)
 library(lfe)
 library(ggpubr)
 library(dineq)
+library(easyGgplot2)
 
 mapviewPWS <- function(pwsid,...){
   url <- paste0("https://geoconnex.us/ref/pws/",pwsid)
@@ -697,6 +698,89 @@ subs <- subsidies %>%
 
 # Descriptive Statistics and Plots
 
+
+Table 1:
+```{r}
+load("pwsdata.RData")
+inc$UrbanRural <- "Urban"
+inc$UrbanRural[which(is.na(inc$NAME))] <- "Rural"
+
+inc$AreaType <- "Primary Residential/Municipal"
+inc$AreaType[which(inc$SERVICE_AREA.SERVICE_AREA_TYPE_CODE=="MH")] <-"Mobile Home Parks"
+
+inc$n <- 1
+inc$small <- (inc$PWSID %in% small$PWSID)
+inc <- filter(inc,!is.na(SERVICE_AREA.SERVICE_AREA_TYPE_CODE))
+inc<- inc %>% mutate(UrbanAreaPop = case_when(
+  Pop.y >= 1000000 ~ "> 1 million",
+  Pop.y < 1000000 & Pop.y > 100000  & UrbanRural == "Urban" ~ "100k - 1 million",
+   Pop.y < 100000 & Pop.y > 10000  & UrbanRural == "Urban" ~ "10k - 100k",
+  Pop.y < 10000 & UrbanRural == "Urban" ~ "<10k Urban",
+  UrbanRural == "Rural" ~ "Rural"
+)
+)
+
+Tab1 <- inc %>% group_by(UrbanRural, AreaType) %>%
+  summarise(count=sum(n),
+            Population = sum(Pop.x)) %>%
+  ungroup() %>%
+  mutate(Percent = Population/sum(Population))
+
+Tab2 <- inc %>% group_by(UrbanAreaPop,
+                         `Water System Ownership`) %>%
+  summarise(count=sum(n),
+            Population = sum(Pop.x)) %>%
+  ungroup() %>%
+  mutate(Percent = 100*Population/sum(Population))
+write.csv(Tab2,"tab2.csv")
+
+##make table comparing Tab2 in non-small utilties
+Tab3 <- inc %>% dplyr::filter(small == FALSE) %>% group_by(UrbanAreaPop,
+                         `Water System Ownership`) %>%
+  summarise(count=sum(n),
+            Population = sum(Pop.x)) %>%
+  ungroup() %>%
+  mutate(Percent = 100*Population/sum(Population))
+write.csv(Tab3,"tab3.csv")
+
+hist <- inc %>% dplyr::filter(small == TRUE)
+
+inc2 <- inc %>% dplyr::filter(small == FALSE)
+### Figure 3
+inc2$ownership <- inc2$`Water System Ownership`
+inc2 <- inc2 %>% mutate(UrbanAreaPop = case_when(
+  UrbanAreaPop=="<10k Urban" ~ "4. < 10k Urban",
+  UrbanAreaPop=="Rural" ~ "5. Rural",
+  UrbanAreaPop=="> 1 million" ~ "1. > 1 mill.",
+  UrbanAreaPop=="100k - 1 million" ~ "2. 100k-1 mill.",
+  UrbanAreaPop=="10k - 100k" ~ "3. 10k - 100k"
+))
+
+ggplot2.violinplot(data=inc2, xName='UrbanAreaPop',yName='income20',
+    groupName='ownership', legendPosition="right")
+#    faceting=TRUE, facetingVarNames=c("UrbanAreaPop"))
+
+f3.1<-ggplot2.boxplot(data=inc2,yName='income50', faceting=TRUE, facetingVarNames=c("UrbanAreaPop"),groupName='ownership',legendPosition="none", xtitle="Ownership", ytitle = "Median HH Income",brewerPalette = "Dark2")
+
+f3.2<-ggplot2.boxplot(data=inc2,yName='income20', faceting=TRUE, facetingVarNames=c("UrbanAreaPop"),groupName='ownership',legendPosition="none", xtitle="Ownership", ytitle = "20th Percentile HH Income",brewerPalette = "Dark2")
+
+f3.3<-ggplot2.boxplot(data=inc2,yName='perc_below_200FPL', faceting=TRUE, facetingVarNames=c("UrbanAreaPop"),groupName='ownership',legendPosition="none", xtitle="Ownership", ytitle = "% Pop <200% FPL",brewerPalette = "Dark2")
+
+f3.4<-ggplot2.boxplot(data=inc2,yName='gini', faceting=TRUE, facetingVarNames=c("UrbanAreaPop"),groupName='ownership',legendPosition="none", xtitle="Ownership", ytitle = "Gini Coefficient",brewerPalette = "Dark2")
+
+### Regressions
+m1 <- felm(data=inc2,income20 ~ `Water System Ownership` |0|0|County)
+m2 <- felm(data=inc2,income50 ~ `Water System Ownership` |0|0|County)
+m3 <- felm(data=inc2,perc_below_200FPL ~ `Water System Ownership` |0|0|County)
+m4 <- felm(data=inc2,gini ~ `Water System Ownership` |0|0|County)
+m1.f <- felm(data=inc2,income20 ~ `Water System Ownership` |County|0|County)
+m2.f <- felm(data=inc2,income50 ~ `Water System Ownership` |County|0|County)
+m3.f <- felm(data=inc2,perc_below_200FPL ~ `Water System Ownership` |County|0|County)
+m4.f <- felm(data=inc2,gini ~ `Water System Ownership` |County|0|County)
+
+stargazer::stargazer(m2,m2.f,m1,m1.f,m3,m3.f,m4,m4.f,type="html",align=TRUE,digits=2,out="regs.html")
+
+```
 make big table
 ```{r}
 D <- aff 
@@ -715,9 +799,33 @@ save(D,file="Data/FinalData.rds")
 ```
 
  
-## Insert test.R here
+## Bill compare
 ```{r}
+pl_pws2 <- st_drop_geometry(pl_pws)
+esquisser(pl_pws2)
 
+View(ear)
+table(ear$QuestionName)
+x <- distinct(ear$QuestionName)
+q <- dplyr::distinct(ear$QuestionName)
+q <- dplyr::distinct(ear,QuestionName)
+View(q)
+hcf <- filter(ear,QuestionName== "WR 6 HCF DW Charges")
+hcf <- dplyr::filter(ear,QuestionName== "WR 6 HCF DW Charges")
+View(hcf)
+table(hcf$Year)
+hcf <- dplyr::filter(ear,QuestionName== "WR 6 HCF DW Charges" & Year==2017)
+hcf
+hcf.d <- dplyr::distinct(hcf,PWSID)
+bills3 <- bills <- dplyr::filter(bills,hhsize==3)
+bill_compare <- left_join(hcf.d,bills3,by="PWSID")
+bill_compare <- dplyr::left_join(hcf.d,bills3,by="PWSID")
+bill_compare <- dplyr::left_join(hcf.d,bills3,by=c("PWSID"="pwsid"))
+hcf.d <- dplyr::distinct(hcf,PWSID,.keep_all=TRUE)
+bill_compare <- dplyr::left_join(hcf.d,bills3,by=c("PWSID"="pwsid"))
+View(bill_compare)
+bill_compare$ear_bill <- as.numeric(gsub("$","",bill_compare$QuestionResults))
+plot(bill_compare$ear_bill ~ bill_compare$bill)
 
 ```
 
@@ -727,6 +835,28 @@ rm(list=ls())
 load("Data/FinalData.rds")
 D.f <- D
 D <- D.f
+
+
+incs <- inc2 %>% select(PWSID,gini,perc_below_200FPL,income20,income50,ownership,Pop.y,UrbanRural,UrbanAreaPop)
+
+D <- left_join(D,incs,by="PWSID")
+
+D$AR20 <- 12*D$bill/D$income20
+D$AR50 <- 12*D$bill/D$income50
+D$hhsize_cat <- as.character(D$hhsize)
+
+counties <- sf::read_sf("https://info.geoconnex.us/collections/counties/items?STATEFP=06&limit=500")
+
+D2 <- st_intersection(D,st_transform(counties,3310))
+m.ar20 <- felm(formula = AR20 ~ ownership + log(Pop) + log(Pop.y) | 0 |      0 | COUNTYFP, data = filter(D2, hhsize == 4)) 
+m.ar50 <- felm(formula = AR50 ~ ownership + log(Pop) + log(Pop.y) | 0 |      0 | COUNTYFP, data = filter(D2, hhsize == 4)) 
+
+m.shutoff <- felm(formula = shutoffs_perc ~ ownership + log(Pop) + AR20 + perc_below_200FPL| 0 |      0 | COUNTYFP, data = filter(D2, hhsize == 4)) 
+
+stargazer::stargazer(m.ar20,m.ar50,m.shutoff,type="html",align=TRUE,digits=2,out="regs2.html")
+
+f6<-ggplot2.boxplot(data=filter(D,hhsize==4),yName='AR20', faceting=TRUE, facetingVarNames=c("UrbanAreaPop","log10PopCat"),groupName='ownership',legendPosition="none", xtitle="Ownership", ytitle = "AR20",brewerPalette = "Dark2",facetingScales="free")
+
 D <- D %>% ungroup() %>% distinct(PWSID,hhsize,.keep_all = TRUE)
 
 D1 <- D%>%filter(hhsize==1) 

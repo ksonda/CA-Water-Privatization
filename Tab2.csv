@@ -1,0 +1,26 @@
+"","UrbanAreaPop","Water System Ownership","count","Population","Percent"
+"1","<10k Urban","Local Government",83,395601,1.0874769049188
+"2","<10k Urban","Privately owned business (non-community)",5,324,0.000890651229884889
+"3","<10k Urban","Privately owned Mutual Water Company or Association",18,12086,0.0332234900135456
+"4","<10k Urban","Privately owned, non-PUC-regulated (Community Water System)",39,15531,0.0426935316399451
+"5","<10k Urban","Privately owned, PUC-regulated, for profit water company",15,33115,0.0910306033260436
+"6","> 1 million","Local Government",168,19501816,53.6090012512
+"7","> 1 million","Privately owned business (non-community)",3,1438,0.00395295206350145
+"8","> 1 million","Privately owned Mutual Water Company or Association",58,316121,0.868992461242102
+"9","> 1 million","Privately owned, non-PUC-regulated (Community Water System)",36,207295,0.569838107095642
+"10","> 1 million","Privately owned, PUC-regulated, for profit water company",52,4060377,11.1616659532294
+"11","100k - 1 million","Local Government",165,7330778,20.1517482768923
+"12","100k - 1 million","Privately owned business (non-community)",14,2806,0.00771347947857099
+"13","100k - 1 million","Privately owned Mutual Water Company or Association",127,44656,0.122755930005369
+"14","100k - 1 million","Privately owned, non-PUC-regulated (Community Water System)",151,58551,0.160952222719105
+"15","100k - 1 million","Privately owned, PUC-regulated, for profit water company",47,974316,2.67832019659422
+"16","10k - 100k","Local Government",164,2574006,7.07574570873791
+"17","10k - 100k","Privately owned business (non-community)",10,1121,0.00308154329845976
+"18","10k - 100k","Privately owned Mutual Water Company or Association",64,91119,0.250479164863831
+"19","10k - 100k","Privately owned, non-PUC-regulated (Community Water System)",75,114358,0.31436139921968
+"20","10k - 100k","Privately owned, PUC-regulated, for profit water company",31,134181,0.36885331073205
+"21","Rural","Local Government",319,286641,0.787954195016773
+"22","Rural","Privately owned business (non-community)",52,10912,0.0299962537669874
+"23","Rural","Privately owned Mutual Water Company or Association",359,79591,0.218789574190643
+"24","Rural","Privately owned, non-PUC-regulated (Community Water System)",359,65356,0.179658647470237
+"25","Rural","Privately owned, PUC-regulated, for profit water company",92,65780,0.180824191055025
